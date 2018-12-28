@@ -8,6 +8,7 @@
 #include "Arduino.h"
 
 #define DAB_MAX_TEXT_LENGTH 128
+#define UNUSED_PIN 255
 #define DAB_MAX_DATA_LENGTH 2 * DAB_MAX_TEXT_LENGTH
 
 namespace constants
@@ -15,14 +16,19 @@ namespace constants
 const int8_t DEMO = 0;
 }
 
+enum SerialType
+{
+  Hardware,
+  Software
+};
+
 class DABDUINO
 {
 public:
 
-  DABDUINO (HardwareSerial& serial, int8_t RESET_PIN, int8_t DAC_MUTE_PIN, int8_t SPI_CS_PIN);
-  Stream& _s;
+  DABDUINO(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
 
-  unsigned char charToAscii(byte byte0, byte byte1);
+  char charToAscii(byte byte0, byte byte1);
 
   void init();
 
@@ -31,7 +37,7 @@ public:
   int8_t sendCommand(byte dabCommand[], byte dabData[], uint32_t *dabDataSize);
 
   // *************************
-  // ***** SYSETEM ***********
+  // ***** SYSTEM ************
   // *************************
 
   int8_t reset();
@@ -120,9 +126,12 @@ public:
 
 
 private:
-  HardwareSerial *_Serial;
-  int8_t resetPin;
-  int8_t dacMutePin;
-  int8_t spiCsPin;
+  void serialBegin(uint32_t baud);
+
+  Stream * serial;
+  SerialType serialtype;
+  uint8_t resetPin;
+  uint8_t dacMutePin;
+  uint8_t spiCsPin;
 };
 

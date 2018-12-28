@@ -6,20 +6,21 @@
  */
 
 #include "DABDUINO.h"
+#include "SoftwareSerial.h"
 
-DABDUINO::DABDUINO(HardwareSerial& serial, int8_t RESET_PIN, int8_t DAC_MUTE_PIN, int8_t SPI_CS_PIN) : _s(serial) {
-
-  _Serial = &serial;
-  resetPin = RESET_PIN;
-  dacMutePin = DAC_MUTE_PIN;
-  spiCsPin = SPI_CS_PIN;
-
+DABDUINO::DABDUINO(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
+  serial(serial),
+  serialtype(serialType),
+  resetPin(resetPin),
+  dacMutePin(dacMutePin),
+  spiCsPin(spiCsPin)
+{
 }
 
 /*
  * Convert two byte char from DAB to one byte char. Add next chars...
  */
-byte DABDUINO::charToAscii(byte byte1, byte byte0) {
+char DABDUINO::charToAscii(byte byte1, byte byte0) {
 
   if (byte1 == 0x00) {
 
@@ -117,16 +118,22 @@ byte DABDUINO::charToAscii(byte byte1, byte byte0) {
 void DABDUINO::init() {
 
   // DAC MUTE
-  pinMode(dacMutePin, OUTPUT);
-  digitalWrite(dacMutePin, HIGH);
+  if (dacMutePin != UNUSED_PIN)
+  {
+    pinMode(dacMutePin, OUTPUT);
+    digitalWrite(dacMutePin, HIGH);
+  }
 
   // SPI CS
-  pinMode(spiCsPin, OUTPUT);
-  digitalWrite(spiCsPin, LOW);
+  if (spiCsPin != UNUSED_PIN)
+  {
+    pinMode(spiCsPin, OUTPUT);
+    digitalWrite(spiCsPin, LOW);
+  }
 
   // DAB module SERIAL
-  _Serial->begin(57600);
-  _Serial->setTimeout(50);
+  serialBegin(57600);
+  serial->setTimeout(50);
 
   // DAB module RESET
   pinMode(resetPin, OUTPUT);
@@ -140,8 +147,24 @@ void DABDUINO::init() {
   }
 }
 
+void DABDUINO::serialBegin(uint32_t baud)
+{
+  switch (serialtype)
+  {
+  case Hardware:
+    static_cast<HardwareSerial*>(serial)->begin(baud);
+    break;
+  case Software:
+    static_cast<SoftwareSerial*>(serial)->begin(baud);
+    break;
+  default:
+    // Error, do nothing.
+    break;
+  }
+}
+
 int8_t DABDUINO::isEvent() {
-  return _Serial->available();
+  return serial->available();
 }
 
 /*
@@ -158,8 +181,8 @@ int8_t DABDUINO::readEvent() {
   uint8_t eventDataSize = 128;
   unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
   while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (_Serial->available() > 0) {
-      serialData = _Serial->read();
+    if (serial->available() > 0) {
+      serialData = serial->read();
       if (serialData == 0xFE) {
         byteIndex = 0;
         dataIndex = 0;
@@ -180,8 +203,8 @@ int8_t DABDUINO::readEvent() {
       byteIndex++;
     }
   }
-  while (_Serial->available() > 0) {
-    _Serial->read();
+  while (serial->available() > 0) {
+    serial->read();
   }
   if (isPacketCompleted == 1 && dabReturn[1] == 0x07) {
     return dabReturn[2] + 1;
@@ -201,19 +224,19 @@ int8_t DABDUINO::sendCommand(byte dabCommand[], byte dabData[], uint32_t *dabDat
   uint16_t dataIndex = 0;
   byte serialData = 0;
   *dabDataSize = 0;
-  while (_Serial->available() > 0) {
-    _Serial->read();
+  while (serial->available() > 0) {
+    serial->read();
   }
   while (byteIndex < 255) {
     if (dabCommand[byteIndex++] == 0xFD) break;
   }
-  _Serial->write(dabCommand, byteIndex);
-  _Serial->flush();
+  serial->write(dabCommand, byteIndex);
+  serial->flush();
   byteIndex = 0;
   unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
   while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (_Serial->available() > 0) {
-      serialData = _Serial->read();
+    if (serial->available() > 0) {
+      serialData = serial->read();
       if (serialData == 0xFE) {
         byteIndex = 0;
         dataIndex = 0;
@@ -242,7 +265,7 @@ int8_t DABDUINO::sendCommand(byte dabCommand[], byte dabData[], uint32_t *dabDat
 }
 
 // *************************
-// ***** SYSETEM ***********
+// ***** SYSTEM ************
 // *************************
 
 /*
@@ -669,7 +692,7 @@ int8_t DABDUINO::getProgramShortName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
@@ -692,7 +715,7 @@ int8_t DABDUINO::getProgramLongName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
@@ -720,7 +743,7 @@ int8_t DABDUINO::getProgramText(char text[]) {
     }
     int32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     for (uint32_t i = 0; i < j; i++) {
       if (text[i] != textLast[i]) {
@@ -842,7 +865,7 @@ int8_t DABDUINO::getEnsembleShortName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
@@ -865,7 +888,7 @@ int8_t DABDUINO::getEnsembleLongName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
@@ -931,7 +954,7 @@ int8_t DABDUINO::getServiceShortName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
@@ -954,7 +977,7 @@ int8_t DABDUINO::getServiceLongName(uint32_t programIndex, char text[]) {
   if (sendCommand(dabCommand, dabData, &dabDataSize)) {
     uint32_t j = 0;
     for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = (char)charToAscii(dabData[i], dabData[i + 1]);
+      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
     }
     return 1;
   } else {
