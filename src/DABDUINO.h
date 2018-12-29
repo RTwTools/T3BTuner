@@ -5,7 +5,11 @@
  * @license  BSD (see license.txt)
  */
 
-#include "Arduino.h"
+#ifndef DABDUINO_H
+#define DABDUINO_H
+
+#include <inttypes.h>
+#include <stream.h>
 
 #define DAB_MAX_TEXT_LENGTH 128
 #define UNUSED_PIN 255
@@ -28,13 +32,13 @@ public:
 
   DABDUINO(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
 
-  char charToAscii(byte byte0, byte byte1);
+  char charToAscii(uint8_t byte0, uint8_t byte1);
 
   void init();
 
   int8_t isEvent();
   int8_t readEvent();
-  int8_t sendCommand(byte dabCommand[], byte dabData[], uint32_t *dabDataSize);
+  int8_t sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *dabDataSize);
 
   // *************************
   // ***** SYSTEM ************
@@ -43,7 +47,7 @@ public:
   int8_t reset();
   int8_t resetCleanDB();
   int8_t isReady();
-  int8_t setAudioOutput(boolean spdiv, boolean cinch);
+  int8_t setAudioOutput(bool spdiv = true, bool cinch = true);
 
   // *************************
   // ***** STREAM ************
@@ -53,13 +57,13 @@ public:
   int8_t playFM(uint32_t frequency);
   int8_t playBEEP();
   int8_t playSTOP();
-  int8_t searchDAB(uint32_t band);
+  int8_t searchDAB(uint32_t band = 1);
   int8_t searchFM(uint32_t seekDirection);
   int8_t playStatus(uint32_t *data);
   int8_t playMode(uint32_t *data);
   int8_t getPlayIndex(uint32_t *data);
   int8_t getSignalStrength(uint32_t *signalStrength, uint32_t *bitErrorRate);
-  int8_t setStereoMode(boolean stereo);
+  int8_t setStereoMode(bool stereo = true);
   int8_t getStereoMode(uint32_t *data);
   int8_t getStereoType(uint32_t *data);
   int8_t setVolume(uint32_t volumeLevel);
@@ -135,3 +139,4 @@ private:
   uint8_t spiCsPin;
 };
 
+#endif
