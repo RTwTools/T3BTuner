@@ -15,22 +15,17 @@
 #define UNUSED_PIN 255
 #define DAB_MAX_DATA_LENGTH 2 * DAB_MAX_TEXT_LENGTH
 
-namespace constants
+enum StreamType
 {
-const int8_t DEMO = 0;
-}
-
-enum SerialType
-{
-  Hardware,
-  Software
+  STREAM_HARDWARE,
+  STREAM_SOFTWARE
 };
 
 class DABDUINO
 {
 public:
 
-  DABDUINO(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
+  DABDUINO(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
 
   char charToAscii(uint8_t byte0, uint8_t byte1);
 
@@ -130,10 +125,10 @@ public:
 
 
 private:
-  void serialBegin(uint32_t baud);
+  void streamBegin(uint32_t baud);
 
-  Stream * serial;
-  SerialType serialtype;
+  Stream * stream;
+  StreamType streamType;
   uint8_t resetPin;
   uint8_t dacMutePin;
   uint8_t spiCsPin;

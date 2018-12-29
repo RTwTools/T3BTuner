@@ -9,9 +9,9 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
-DABDUINO::DABDUINO(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
-  serial(serial),
-  serialtype(serialType),
+DABDUINO::DABDUINO(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
+  stream(stream),
+  streamType(streamType),
   resetPin(resetPin),
   dacMutePin(dacMutePin),
   spiCsPin(spiCsPin)
@@ -133,8 +133,8 @@ void DABDUINO::init() {
   }
 
   // DAB module SERIAL
-  serialBegin(57600);
-  serial->setTimeout(50);
+  streamBegin(57600);
+  stream->setTimeout(50);
 
   // DAB module RESET
   pinMode(resetPin, OUTPUT);
@@ -148,15 +148,15 @@ void DABDUINO::init() {
   }
 }
 
-void DABDUINO::serialBegin(uint32_t baud)
+void DABDUINO::streamBegin(uint32_t baud)
 {
-  switch (serialtype)
+  switch (streamType)
   {
-  case Hardware:
-    static_cast<HardwareSerial*>(serial)->begin(baud);
+  case STREAM_HARDWARE:
+    static_cast<HardwareSerial*>(stream)->begin(baud);
     break;
-  case Software:
-    static_cast<SoftwareSerial*>(serial)->begin(baud);
+  case STREAM_SOFTWARE:
+    static_cast<SoftwareSerial*>(stream)->begin(baud);
     break;
   default:
     // Error, do nothing.
@@ -165,7 +165,7 @@ void DABDUINO::serialBegin(uint32_t baud)
 }
 
 int8_t DABDUINO::isEvent() {
-  return serial->available();
+  return stream->available();
 }
 
 /*
@@ -182,8 +182,8 @@ int8_t DABDUINO::readEvent() {
   uint8_t eventDataSize = 128;
   unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
   while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (serial->available() > 0) {
-      serialData = serial->read();
+    if (stream->available() > 0) {
+      serialData = stream->read();
       if (serialData == 0xFE) {
         byteIndex = 0;
         dataIndex = 0;
@@ -204,8 +204,8 @@ int8_t DABDUINO::readEvent() {
       byteIndex++;
     }
   }
-  while (serial->available() > 0) {
-    serial->read();
+  while (stream->available() > 0) {
+    stream->read();
   }
   if (isPacketCompleted == 1 && dabReturn[1] == 0x07) {
     return dabReturn[2] + 1;
@@ -225,19 +225,19 @@ int8_t DABDUINO::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *
   uint16_t dataIndex = 0;
   uint8_t serialData = 0;
   *dabDataSize = 0;
-  while (serial->available() > 0) {
-    serial->read();
+  while (stream->available() > 0) {
+    stream->read();
   }
   while (byteIndex < 255) {
     if (dabCommand[byteIndex++] == 0xFD) break;
   }
-  serial->write(dabCommand, byteIndex);
-  serial->flush();
+  stream->write(dabCommand, byteIndex);
+  stream->flush();
   byteIndex = 0;
   unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
   while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (serial->available() > 0) {
-      serialData = serial->read();
+    if (stream->available() > 0) {
+      serialData = stream->read();
       if (serialData == 0xFE) {
         byteIndex = 0;
         dataIndex = 0;

@@ -5,14 +5,15 @@
   www.dabduino.com
 */
 
+#include <SoftwareSerial.h>
 #include "DABDUINO.h"
 
-#define _DAB_SERIAL_PORT Serial1
-#define _DAB_RESET_PIN 7
-#define _DAB_DAC_MUTE_PIN 9
-#define _DAB_SPI_CS_PIN 10
+#define SERIAL_PORT Serial1
+#define RESET_PIN 7
+#define DAC_MUTE_PIN 9
+#define SPI_CS_PIN 10
 
-DABDUINO dab = DABDUINO(_DAB_SERIAL_PORT, _DAB_RESET_PIN, _DAB_DAC_MUTE_PIN, _DAB_SPI_CS_PIN);
+DABDUINO dab = DABDUINO(&SERIAL_PORT, STREAM_HARDWARE, RESET_PIN, DAC_MUTE_PIN, SPI_CS_PIN);
 
 // DAB variables
 char dabText[DAB_MAX_TEXT_LENGTH];
