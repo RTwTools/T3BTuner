@@ -15,10 +15,18 @@
 #define UNUSED_PIN 255
 #define DAB_MAX_DATA_LENGTH 2 * DAB_MAX_TEXT_LENGTH
 
+#define COMMAND_MAX_SIZE 20
+
 enum StreamType
 {
   STREAM_HARDWARE,
   STREAM_SOFTWARE
+};
+
+enum DabSystemReset
+{
+  DabSystemResetModule = 0x00,
+  DabSystemResetFull = 0x01
 };
 
 class T3BTuner
@@ -34,15 +42,14 @@ public:
   int8_t isEvent();
   int8_t readEvent();
   int8_t sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *dabDataSize);
-
+  
   // *************************
   // ***** SYSTEM ************
   // *************************
 
-  int8_t reset();
-  int8_t resetCleanDB();
-  int8_t isReady();
-  int8_t setAudioOutput(bool spdiv = true, bool cinch = true);
+  bool Ready();
+  bool Reset(DabSystemReset reset = DabSystemResetModule);
+  bool AudioOutput(bool spdiv = true, bool cinch = true);
 
   // *************************
   // ***** STREAM ************
@@ -122,10 +129,21 @@ public:
   int8_t eventNotificationEnable();
   int8_t eventNotificationDisable();
 
-
-
 private:
+  void commandAppend(uint8_t data);
+  void commandAppend(uint32_t data);
+  void commandStart(uint8_t type, uint8_t command, uint8_t option);
+  void commandEnd();
+  void commandCreate(uint8_t type, uint8_t command, uint8_t option);
+  void commandCreate(uint8_t type, uint8_t command, uint8_t option, uint8_t param);
+  bool commandSend();
+
   void streamBegin(uint32_t baud);
+
+  uint8_t command[COMMAND_MAX_SIZE];
+  uint8_t commandSize = 0;
+  uint8_t response[DAB_MAX_DATA_LENGTH];
+  uint32_t responseSize = 0;
 
   Stream * stream;
   StreamType streamType;

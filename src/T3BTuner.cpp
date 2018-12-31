@@ -9,6 +9,20 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
+#define COMMAND_START 0xFE
+#define COMMAND_OPTION_NONE 0x00
+#define COMMAND_OPTION_GET 0x00
+#define COMMAND_OPTION_SET 0x01
+#define COMMAND_END 0xFD
+
+#define COMMAND_SYSTEM 0x00
+#define COMMAND_SYSTEM_READY 0x00
+#define COMMAND_SYSTEM_RESET 0x01
+#define COMMAND_SYSTEM_AUDIO 0x06
+
+#define COMMAND_STREAM 0x01
+#define COMMAND_STREAM_PROGRAM_NAME 0x0F
+
 T3BTuner::T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
   stream(stream),
   streamType(streamType),
@@ -16,6 +30,52 @@ T3BTuner::T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin, uint
   dacMutePin(dacMutePin),
   spiCsPin(spiCsPin)
 {
+}
+
+void T3BTuner::commandAppend(uint8_t data)
+{
+  // TODO Check if index is too big for data!
+
+  command[commandSize] = data;
+  commandSize++;
+}
+
+void T3BTuner::commandAppend(uint32_t data)
+{
+  for (size_t i = 24; i >= 0; i = i - 8)
+  {
+    uint8_t dataPart = ((data >> i) & 0xFF);
+    commandAppend(dataPart);
+  }
+}
+
+void T3BTuner::commandStart(uint8_t type, uint8_t command, uint8_t option)
+{
+  commandSize = 0;
+  commandAppend((uint8_t)COMMAND_START);
+  commandAppend(type);
+  commandAppend(command);
+  commandAppend((uint8_t)COMMAND_OPTION_NONE);
+  commandAppend((uint8_t)COMMAND_OPTION_NONE);
+  commandAppend(option);
+}
+
+void T3BTuner::commandEnd()
+{
+  commandAppend((uint8_t)COMMAND_END);
+}
+
+void T3BTuner::commandCreate(uint8_t type, uint8_t command, uint8_t option)
+{
+  commandStart(type, command, option);
+  commandEnd();
+}
+
+void T3BTuner::commandCreate(uint8_t type, uint8_t command, uint8_t option, uint8_t param)
+{
+  commandStart(type, command, option);
+  commandAppend(param);
+  commandEnd();
 }
 
 /*
@@ -143,7 +203,7 @@ void T3BTuner::init() {
   digitalWrite(resetPin, HIGH);
   delay(1000);
 
-  while (!isReady()) {
+  while (!Ready()) {
     delay(100);
   }
 }
@@ -265,81 +325,88 @@ int8_t T3BTuner::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *
   }
 }
 
+/*
+ *  Send command to DAB module and wait for answer
+ */
+bool T3BTuner::commandSend() {
+
+  uint8_t dabReturn[6];
+  uint8_t isPacketCompleted = 0;
+  uint16_t byteIndex = 0;
+  uint16_t dataIndex = 0;
+  uint8_t serialData = 0;
+  responseSize = 0;
+  while (stream->available() > 0) {
+    stream->read();
+  }
+  while (byteIndex < 255) {
+    if (command[byteIndex++] == 0xFD) break;
+  }
+  stream->write(command, byteIndex);
+  stream->flush();
+  byteIndex = 0;
+  unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
+  while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
+    if (stream->available() > 0) {
+      serialData = stream->read();
+      if (serialData == 0xFE) {
+        byteIndex = 0;
+        dataIndex = 0;
+      }
+      if (responseSize && dataIndex < responseSize) {
+        response[dataIndex++] = serialData;
+      }
+      if (byteIndex <= 5) {
+        dabReturn[byteIndex] = serialData;
+      }
+      if (byteIndex == 5) {
+        responseSize = (((long)dabReturn[4] << 8) + (long)dabReturn[5]);
+      }
+      if ((int16_t)(byteIndex - responseSize) >= 5 && serialData == 0xFD) {
+        isPacketCompleted = 1;
+        break;
+      }
+      byteIndex++;
+    }
+  }
+  return (isPacketCompleted == 1 && !(dabReturn[1] == 0x00 && dabReturn[2] == 0x02));
+}
+
 // *************************
 // ***** SYSTEM ************
 // *************************
 
 /*
- *   Reset DAB module only
- */
-int8_t T3BTuner::reset() {
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x00, 0x01, 0x00, 0x00, 0x01, 0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    init();
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/*
- *   Clean DAB module database and reset module
- */
-int8_t T3BTuner::resetCleanDB() {
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x00, 0x01, 0x00, 0x00, 0x01, 1, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    init();
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/*
  *   Test for DAB module is ready for communication
  */
-int8_t T3BTuner::isReady() {
+bool T3BTuner::Ready()
+{
+  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_READY, COMMAND_OPTION_NONE);
+  return commandSend();
+}
 
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+/*
+ *   Reset DAB module only
+ */
+bool T3BTuner::Reset(DabSystemReset reset) // TODO CHECK ENUM VALUE?
+{
+  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_RESET, COMMAND_OPTION_SET, (uint8_t)reset);
+
+  bool result = commandSend();
+  if (result) init();  
+  return result;
 }
 
 /*
  *   Set audio output channels (SPDIV, CINCH /I2S DAC/)
  *   CINCH for analog output, SPDIV for optical digital output
  */
-int8_t T3BTuner::setAudioOutput(bool spdiv, bool cinch) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t s;
-  if (spdiv && spdiv) {
-    s = B00000011;
-  } else if (spdiv && !cinch) {
-    s = B00000001;
-  } else if (!spdiv && cinch) {
-    s = B00000010;
-  } else {
-    s = B00000000;
-  }
-  uint8_t dabCommand[8] = { 0xFE, 0x00, 0x06, 0x00, 0x00, 0x01, s, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::AudioOutput(bool spdiv, bool cinch)
+{
+  uint8_t param = (uint8_t)spdiv | ((uint8_t)cinch << 0x1);
+  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_AUDIO, COMMAND_OPTION_SET, param);
+  return commandSend();
 }
-
 
 // *************************
 // ***** STREAM ************
