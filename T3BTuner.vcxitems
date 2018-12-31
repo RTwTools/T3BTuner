@@ -21,10 +21,10 @@
     <Text Include="$(MSBuildThisFileDirectory)license.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\DABDUINO.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\T3BTuner.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\DABDUINO.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\T3BTuner.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="$(MSBuildThisFileDirectory)doc\dabduino_01.jpg" />
