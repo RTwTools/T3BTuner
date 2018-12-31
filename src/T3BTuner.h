@@ -5,8 +5,8 @@
  * @license  BSD (see license.txt)
  */
 
-#ifndef DABDUINO_H
-#define DABDUINO_H
+#ifndef T3BTUNER_H
+#define T3BTUNER_H
 
 #include <inttypes.h>
 #include <stream.h>
@@ -21,11 +21,11 @@ enum StreamType
   STREAM_SOFTWARE
 };
 
-class DABDUINO
+class T3BTuner
 {
 public:
 
-  DABDUINO(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
+  T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
 
   char charToAscii(uint8_t byte0, uint8_t byte1);
 

@@ -9,7 +9,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
-DABDUINO::DABDUINO(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
+T3BTuner::T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
   stream(stream),
   streamType(streamType),
   resetPin(resetPin),
@@ -21,7 +21,7 @@ DABDUINO::DABDUINO(Stream* stream, StreamType streamType, uint8_t resetPin, uint
 /*
  * Convert two byte char from DAB to one byte char. Add next chars...
  */
-char DABDUINO::charToAscii(uint8_t byte1, uint8_t byte0) {
+char T3BTuner::charToAscii(uint8_t byte1, uint8_t byte0) {
 
   if (byte1 == 0x00) {
 
@@ -116,7 +116,7 @@ char DABDUINO::charToAscii(uint8_t byte1, uint8_t byte0) {
   return  (0x20);
 }
 
-void DABDUINO::init() {
+void T3BTuner::init() {
 
   // DAC MUTE
   if (dacMutePin != UNUSED_PIN)
@@ -148,7 +148,7 @@ void DABDUINO::init() {
   }
 }
 
-void DABDUINO::streamBegin(uint32_t baud)
+void T3BTuner::streamBegin(uint32_t baud)
 {
   switch (streamType)
   {
@@ -164,7 +164,7 @@ void DABDUINO::streamBegin(uint32_t baud)
   }
 }
 
-int8_t DABDUINO::isEvent() {
+int8_t T3BTuner::isEvent() {
   return stream->available();
 }
 
@@ -172,7 +172,7 @@ int8_t DABDUINO::isEvent() {
  *   Read event
  *   RETURN EVENT TYP: 1=scan finish, 2=got new DAB program text, 3=DAB reconfiguration, 4=DAB channel list order change, 5=RDS group, 6=Got new FM radio text, 7=Return the scanning frequency /FM/
  */
-int8_t DABDUINO::readEvent() {
+int8_t T3BTuner::readEvent() {
   uint8_t eventData[16];
   uint8_t dabReturn[6];
   uint8_t isPacketCompleted = 0;
@@ -217,7 +217,7 @@ int8_t DABDUINO::readEvent() {
 /*
  *  Send command to DAB module and wait for answer
  */
-int8_t DABDUINO::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *dabDataSize) {
+int8_t T3BTuner::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *dabDataSize) {
 
   uint8_t dabReturn[6];
   uint8_t isPacketCompleted = 0;
@@ -272,7 +272,7 @@ int8_t DABDUINO::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *
 /*
  *   Reset DAB module only
  */
-int8_t DABDUINO::reset() {
+int8_t T3BTuner::reset() {
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
   uint8_t dabCommand[8] = { 0xFE, 0x00, 0x01, 0x00, 0x00, 0x01, 0, 0xFD };
@@ -287,7 +287,7 @@ int8_t DABDUINO::reset() {
 /*
  *   Clean DAB module database and reset module
  */
-int8_t DABDUINO::resetCleanDB() {
+int8_t T3BTuner::resetCleanDB() {
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
   uint8_t dabCommand[8] = { 0xFE, 0x00, 0x01, 0x00, 0x00, 0x01, 1, 0xFD };
@@ -302,7 +302,7 @@ int8_t DABDUINO::resetCleanDB() {
 /*
  *   Test for DAB module is ready for communication
  */
-int8_t DABDUINO::isReady() {
+int8_t T3BTuner::isReady() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -318,7 +318,7 @@ int8_t DABDUINO::isReady() {
  *   Set audio output channels (SPDIV, CINCH /I2S DAC/)
  *   CINCH for analog output, SPDIV for optical digital output
  */
-int8_t DABDUINO::setAudioOutput(bool spdiv, bool cinch) {
+int8_t T3BTuner::setAudioOutput(bool spdiv, bool cinch) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -349,7 +349,7 @@ int8_t DABDUINO::setAudioOutput(bool spdiv, bool cinch) {
  *   Play DAB program
  *   programIndex = 1..9999999 (see programs index)
  */
-int8_t DABDUINO::playDAB(uint32_t programIndex) {
+int8_t T3BTuner::playDAB(uint32_t programIndex) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -369,7 +369,7 @@ int8_t DABDUINO::playDAB(uint32_t programIndex) {
  *   Play FM program
  *   frequency = 87500..108000 (MHz)
  */
-int8_t DABDUINO::playFM(uint32_t frequency) {
+int8_t T3BTuner::playFM(uint32_t frequency) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -388,7 +388,7 @@ int8_t DABDUINO::playFM(uint32_t frequency) {
 /*
  *   Play BEEP
  */
-int8_t DABDUINO::playBEEP() {
+int8_t T3BTuner::playBEEP() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -403,7 +403,7 @@ int8_t DABDUINO::playBEEP() {
 /*
  *   Play STOP
  */
-int8_t DABDUINO::playSTOP() {
+int8_t T3BTuner::playSTOP() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -420,7 +420,7 @@ int8_t DABDUINO::playSTOP() {
  * zone: 1=BAND-3, 2=CHINA-BAND, 3=L-BAND
  */
 
-int8_t DABDUINO::searchDAB(uint32_t band) {
+int8_t T3BTuner::searchDAB(uint32_t band) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -454,7 +454,7 @@ int8_t DABDUINO::searchDAB(uint32_t band) {
 /*
  * Seek FM program - searchDirection: 0=backward, 1=forward
  */
-int8_t DABDUINO::searchFM(uint32_t searchDirection) {
+int8_t T3BTuner::searchFM(uint32_t searchDirection) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -472,7 +472,7 @@ int8_t DABDUINO::searchFM(uint32_t searchDirection) {
  *   Radio module play status
  *   return data: 0=playing, 1=searching, 2=tuning, 3=stop, 4=sorting change, 5=reconfiguration
  */
-int8_t DABDUINO::playStatus(uint32_t *data) {
+int8_t T3BTuner::playStatus(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -493,7 +493,7 @@ int8_t DABDUINO::playStatus(uint32_t *data) {
  *   Radio module play mode
  *   return data: 0=DAB, 1=FM, 2=BEEP, 255=Stream stop
  */
-int8_t DABDUINO::playMode(uint32_t *data) {
+int8_t T3BTuner::playMode(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -518,7 +518,7 @@ int8_t DABDUINO::playMode(uint32_t *data) {
 /*
  * Get DAB station index, get tuned FM station frequency
  */
-int8_t DABDUINO::getPlayIndex(uint32_t *data) {
+int8_t T3BTuner::getPlayIndex(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -539,7 +539,7 @@ int8_t DABDUINO::getPlayIndex(uint32_t *data) {
  * DAB: signalStrength=0..18, bitErrorRate=
  * FM: signalStrength=0..100
  */
-int8_t DABDUINO::getSignalStrength(uint32_t *signalStrength, uint32_t *bitErrorRate) {
+int8_t T3BTuner::getSignalStrength(uint32_t *signalStrength, uint32_t *bitErrorRate) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -560,7 +560,7 @@ int8_t DABDUINO::getSignalStrength(uint32_t *signalStrength, uint32_t *bitErrorR
  *   Set stereo mode
  *   true=stereo, false=force mono
  */
-int8_t DABDUINO::setStereoMode(bool stereo) {
+int8_t T3BTuner::setStereoMode(bool stereo) {
 
   int32_t value = 0;
   if (stereo == true) {
@@ -580,7 +580,7 @@ int8_t DABDUINO::setStereoMode(bool stereo) {
  *   Get stereo mode
  *   0=force mono, 1=auto detect stereo
  */
-int8_t DABDUINO::getStereoMode(uint32_t *data) {
+int8_t T3BTuner::getStereoMode(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -601,7 +601,7 @@ int8_t DABDUINO::getStereoMode(uint32_t *data) {
  *   Get stereo type
  *   return data: 0=stereo, 1=join stereo, 2=dual channel, 3=single channel (mono)
  */
-int8_t DABDUINO::getStereoType(uint32_t *data) {
+int8_t T3BTuner::getStereoType(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -622,7 +622,7 @@ int8_t DABDUINO::getStereoType(uint32_t *data) {
  *   Set volume
  *   volumeLevel = 0..16
  */
-int8_t DABDUINO::setVolume(uint32_t volumeLevel) {
+int8_t T3BTuner::setVolume(uint32_t volumeLevel) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -640,7 +640,7 @@ int8_t DABDUINO::setVolume(uint32_t volumeLevel) {
  *   Get volume
  *   return set volumeLevel: 0..16
  */
-int8_t DABDUINO::getVolume(uint32_t *data) {
+int8_t T3BTuner::getVolume(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -661,7 +661,7 @@ int8_t DABDUINO::getVolume(uint32_t *data) {
  *   Get program type
  *   0=N/A, 1=News, 2=Curent Affairs, 3=Information, 4=Sport, 5=Education, 6=Drama, 7=Arts, 8=Science, 9=Talk, 10=Pop music, 11=Rock music, 12=Easy listening, 13=Light Classical, 14=Classical music, 15=Other music, 16=Weather, 17=Finance, 18=Children's, 19=Factual, 20=Religion, 21=Phone in, 22=Travel, 23=Leisure, 24=Jazz & Blues, 25=Country music, 26=National music, 27=Oldies music, 28=Folk Music, 29=Documentary, 30=undefined, 31=undefined
  */
-int8_t DABDUINO::getProgramType(uint32_t *data) {
+int8_t T3BTuner::getProgramType(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -681,7 +681,7 @@ int8_t DABDUINO::getProgramType(uint32_t *data) {
 /*
  * Get DAB station short name
  */
-int8_t DABDUINO::getProgramShortName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getProgramShortName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -704,7 +704,7 @@ int8_t DABDUINO::getProgramShortName(uint32_t programIndex, char text[]) {
 /*
  * Get DAB station long name
  */
-int8_t DABDUINO::getProgramLongName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getProgramLongName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -729,7 +729,7 @@ int8_t DABDUINO::getProgramLongName(uint32_t programIndex, char text[]) {
  * return: 1=new text, 2=text is same, 3=no text
  * dabText: text
  */
-int8_t DABDUINO::getProgramText(char text[]) {
+int8_t T3BTuner::getProgramText(char text[]) {
 
   char textLast[DAB_MAX_TEXT_LENGTH];
   memcpy(textLast, text, sizeof(text[0])*DAB_MAX_TEXT_LENGTH);
@@ -761,7 +761,7 @@ int8_t DABDUINO::getProgramText(char text[]) {
  *   Get sampling rate (DAB/FM)
  *   return data: 1=32kHz, 2=24kHz, 3=48kHz
  */
-int8_t DABDUINO::getSamplingRate(uint32_t *data) {
+int8_t T3BTuner::getSamplingRate(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -782,7 +782,7 @@ int8_t DABDUINO::getSamplingRate(uint32_t *data) {
  *   Get data rate (DAB)
  *   return data: data rate in kbps
  */
-int8_t DABDUINO::getDataRate(uint32_t *data) {
+int8_t T3BTuner::getDataRate(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -806,7 +806,7 @@ int8_t DABDUINO::getDataRate(uint32_t *data) {
  *   20..30 = the noise (short break) appears
  *   100 = the bit error rate is 0
  */
-int8_t DABDUINO::getSignalQuality(uint32_t *data) {
+int8_t T3BTuner::getSignalQuality(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -830,7 +830,7 @@ int8_t DABDUINO::getSignalQuality(uint32_t *data) {
  *
  *  // TODO: add conversion table for index2freqency
  */
-int8_t DABDUINO::getFrequency(uint32_t programIndex, uint32_t *data) {
+int8_t T3BTuner::getFrequency(uint32_t programIndex, uint32_t *data) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -854,7 +854,7 @@ int8_t DABDUINO::getFrequency(uint32_t programIndex, uint32_t *data) {
 /*
  * Get DAB program ensemble short name
  */
-int8_t DABDUINO::getEnsembleShortName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getEnsembleShortName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -877,7 +877,7 @@ int8_t DABDUINO::getEnsembleShortName(uint32_t programIndex, char text[]) {
 /*
  * Get DAB program ensemble long name
  */
-int8_t DABDUINO::getEnsembleLongName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getEnsembleLongName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -900,7 +900,7 @@ int8_t DABDUINO::getEnsembleLongName(uint32_t programIndex, char text[]) {
 /*
  * Get DAB stations index (number of programs in database)
  */
-int8_t DABDUINO::getProgramIndex(uint32_t *data) {
+int8_t T3BTuner::getProgramIndex(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -920,7 +920,7 @@ int8_t DABDUINO::getProgramIndex(uint32_t *data) {
  *   Test DAB program is active (on-air)
  *   return: 0=off-air, 1=on-air
  */
-int8_t DABDUINO::isProgramOnAir(uint32_t programIndex) {
+int8_t T3BTuner::isProgramOnAir(uint32_t programIndex) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -943,7 +943,7 @@ int8_t DABDUINO::isProgramOnAir(uint32_t programIndex) {
 /*
  * Get DAB program service short name
  */
-int8_t DABDUINO::getServiceShortName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getServiceShortName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -966,7 +966,7 @@ int8_t DABDUINO::getServiceShortName(uint32_t programIndex, char text[]) {
 /*
  * Get DAB program service long name
  */
-int8_t DABDUINO::getServiceLongName(uint32_t programIndex, char text[]) {
+int8_t T3BTuner::getServiceLongName(uint32_t programIndex, char text[]) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -989,7 +989,7 @@ int8_t DABDUINO::getServiceLongName(uint32_t programIndex, char text[]) {
 /*
  * Get DAB search index (number of programs found in search process)
  */
-int8_t DABDUINO::getSearchIndex(uint32_t *data) {
+int8_t T3BTuner::getSearchIndex(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1010,7 +1010,7 @@ int8_t DABDUINO::getSearchIndex(uint32_t *data) {
  * Get DAB program service component type (ASCTy)
  * return data: 0=DAB, 1=DAB+, 2=Packet data, 3=DMB (stream data)
  */
-int8_t DABDUINO::getServCompType(uint32_t programIndex, uint32_t *data) {
+int8_t T3BTuner::getServCompType(uint32_t programIndex, uint32_t *data) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -1036,7 +1036,7 @@ int8_t DABDUINO::getServCompType(uint32_t programIndex, uint32_t *data) {
  *   presetIndex = 0..9
  *   presetMode = 0=DAB, 1=FM
  */
-int8_t DABDUINO::setPreset(uint32_t programIndex, uint32_t presetIndex, uint32_t presetMode) {
+int8_t T3BTuner::setPreset(uint32_t programIndex, uint32_t presetIndex, uint32_t presetMode) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -1057,7 +1057,7 @@ int8_t DABDUINO::setPreset(uint32_t programIndex, uint32_t presetIndex, uint32_t
  *  presetIndex = 0..9
  *  presetMode = 0=DAB, 1=FM
  */
-int8_t DABDUINO::getPreset(uint32_t presetIndex, uint32_t presetMode, uint32_t *data) {
+int8_t T3BTuner::getPreset(uint32_t presetIndex, uint32_t presetMode, uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1077,7 +1077,7 @@ int8_t DABDUINO::getPreset(uint32_t presetIndex, uint32_t presetMode, uint32_t *
  * return serviceId = service id of DAB program
  * return ensembleId = ensemble id of DAB program
  */
-int8_t DABDUINO::getProgramInfo(uint32_t programIndex, uint32_t *serviceId, uint32_t *ensembleId) {
+int8_t T3BTuner::getProgramInfo(uint32_t programIndex, uint32_t *serviceId, uint32_t *ensembleId) {
 
   uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
   uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
@@ -1102,7 +1102,7 @@ int8_t DABDUINO::getProgramInfo(uint32_t programIndex, uint32_t *serviceId, uint
  * Get program sorter
  * return data = 0=sort by ensembleID, 1=sort by service name, 2=sort by active and inactive program
  */
-int8_t DABDUINO::getProgramSorter(uint32_t *data) {
+int8_t T3BTuner::getProgramSorter(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1122,7 +1122,7 @@ int8_t DABDUINO::getProgramSorter(uint32_t *data) {
  *   Set program sorter
  *   sortMethod = 0=sort by ensembleID, 1=sort by service name, 2=sort by active and inactive program
  */
-int8_t DABDUINO::setProgramSorter(uint32_t sortMethod) {
+int8_t T3BTuner::setProgramSorter(uint32_t sortMethod) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1138,7 +1138,7 @@ int8_t DABDUINO::setProgramSorter(uint32_t sortMethod) {
  * Get DRC
  * return data = 0=DRC off, 1=DRC low, 2=DRC high
  */
-int8_t DABDUINO::getDRC(uint32_t *data) {
+int8_t T3BTuner::getDRC(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1158,7 +1158,7 @@ int8_t DABDUINO::getDRC(uint32_t *data) {
  *   Set DRC
  *   setDRC = 0=DRC off, 1=DRC low, 2=DRC high
  */
-int8_t DABDUINO::setDRC(uint32_t setDRC) {
+int8_t T3BTuner::setDRC(uint32_t setDRC) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1175,7 +1175,7 @@ int8_t DABDUINO::setDRC(uint32_t setDRC) {
  *   Prune programs - delete inactive programs (!on-air)
  *
  */
-int8_t DABDUINO::prunePrograms(uint32_t *prunedTotalPrograms, uint32_t *prunedProgramIndex) {
+int8_t T3BTuner::prunePrograms(uint32_t *prunedTotalPrograms, uint32_t *prunedProgramIndex) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1197,7 +1197,7 @@ int8_t DABDUINO::prunePrograms(uint32_t *prunedTotalPrograms, uint32_t *prunedPr
  * return ECC (Extended Country Code)
  * return countryId (Country identification)
  */
-int8_t DABDUINO::getECC(uint32_t *ECC, uint32_t *countryId) {
+int8_t T3BTuner::getECC(uint32_t *ECC, uint32_t *countryId) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1218,7 +1218,7 @@ int8_t DABDUINO::getECC(uint32_t *ECC, uint32_t *countryId) {
  * Get FM RDS PI code
  * return PI code
  */
-int8_t DABDUINO::getRdsPIcode(uint32_t *data) {
+int8_t T3BTuner::getRdsPIcode(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1238,7 +1238,7 @@ int8_t DABDUINO::getRdsPIcode(uint32_t *data) {
  *   Set FMstereoThdLevel
  *   RSSItresholdLevel = 0..10
  */
-int8_t DABDUINO::setFMstereoThdLevel(uint32_t RSSItresholdLevel) {
+int8_t T3BTuner::setFMstereoThdLevel(uint32_t RSSItresholdLevel) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1254,7 +1254,7 @@ int8_t DABDUINO::setFMstereoThdLevel(uint32_t RSSItresholdLevel) {
  *   Get FMstereoThdLevel
  *   data return = 0..10
  */
-int8_t DABDUINO::getFMstereoThdLevel(uint32_t *data) {
+int8_t T3BTuner::getFMstereoThdLevel(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1274,7 +1274,7 @@ int8_t DABDUINO::getFMstereoThdLevel(uint32_t *data) {
  * Get RDS raw data
  * return: 1=new RDS data, 2=no new RDS data, 3=no RDS data
  */
-int8_t DABDUINO::getRDSrawData(uint32_t *RDSblockA, uint32_t *RDSblockB, uint32_t *RDSblockC, uint32_t *RDSblockD, uint32_t *BlerA, uint32_t *BlerB, uint32_t *BlerC, uint32_t *BlerD) {
+int8_t T3BTuner::getRDSrawData(uint32_t *RDSblockA, uint32_t *RDSblockB, uint32_t *RDSblockC, uint32_t *RDSblockD, uint32_t *BlerA, uint32_t *BlerB, uint32_t *BlerC, uint32_t *BlerD) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1307,7 +1307,7 @@ int8_t DABDUINO::getRDSrawData(uint32_t *RDSblockA, uint32_t *RDSblockB, uint32_
  *   Set FMseekTreshold
  *   RSSItreshold = 0..100
  */
-int8_t DABDUINO::setFMseekTreshold(uint32_t RSSItreshold) {
+int8_t T3BTuner::setFMseekTreshold(uint32_t RSSItreshold) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1323,7 +1323,7 @@ int8_t DABDUINO::setFMseekTreshold(uint32_t RSSItreshold) {
  *   Get FMseekTreshold
  *   data return = 0..100
  */
-int8_t DABDUINO::getFMseekTreshold(uint32_t *data) {
+int8_t T3BTuner::getFMseekTreshold(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1343,7 +1343,7 @@ int8_t DABDUINO::getFMseekTreshold(uint32_t *data) {
  *   Set FMstereoTreshold
  *   RSSItreshold = 0..100
  */
-int8_t DABDUINO::setFMstereoTreshold(uint32_t RSSIstereoTreshold) {
+int8_t T3BTuner::setFMstereoTreshold(uint32_t RSSIstereoTreshold) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1359,7 +1359,7 @@ int8_t DABDUINO::setFMstereoTreshold(uint32_t RSSIstereoTreshold) {
  *   Get FMstereoTreshold
  *   data return = 0..100
  */
-int8_t DABDUINO::getFMstereoTreshold(uint32_t *data) {
+int8_t T3BTuner::getFMstereoTreshold(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1379,7 +1379,7 @@ int8_t DABDUINO::getFMstereoTreshold(uint32_t *data) {
  *   Get FM Exact station
  *   data return: 0=current station is not exact frequency, 1=current station is exact frequency, 0xFE=no station information yet
  */
-int8_t DABDUINO::getFMexactStation(uint32_t *data) {
+int8_t T3BTuner::getFMexactStation(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1403,7 +1403,7 @@ int8_t DABDUINO::getFMexactStation(uint32_t *data) {
  *  Set RTC clock
  *  year: 2017=17,2018=18, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59, second: 0..59 
  */
-int8_t DABDUINO::setRTCclock(uint32_t year, uint32_t month, uint32_t day, uint32_t hour, uint32_t minute, uint32_t second) {
+int8_t T3BTuner::setRTCclock(uint32_t year, uint32_t month, uint32_t day, uint32_t hour, uint32_t minute, uint32_t second) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1419,7 +1419,7 @@ int8_t DABDUINO::setRTCclock(uint32_t year, uint32_t month, uint32_t day, uint32
  *  Get RTC ckock
  *  year: 2017=17,2018=18, month: 1..12, week: 0(sat)..6(fri), day: 1..31, hour: 0..23, minute: 0..59, second: 0..59 
  */
-int8_t DABDUINO::getRTCclock(uint32_t *year, uint32_t *month, uint32_t *week, uint32_t *day, uint32_t *hour, uint32_t *minute, uint32_t *second) {
+int8_t T3BTuner::getRTCclock(uint32_t *year, uint32_t *month, uint32_t *week, uint32_t *day, uint32_t *hour, uint32_t *minute, uint32_t *second) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1444,7 +1444,7 @@ int8_t DABDUINO::getRTCclock(uint32_t *year, uint32_t *month, uint32_t *week, ui
 /*
  *  Set RTC sync clock from stream enable
  */
-int8_t DABDUINO::RTCsyncEnable() {
+int8_t T3BTuner::RTCsyncEnable() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1459,7 +1459,7 @@ int8_t DABDUINO::RTCsyncEnable() {
 /*
  *  Set RTC sync clock from stream disable
  */
-int8_t DABDUINO::RTCsyncDisable() {
+int8_t T3BTuner::RTCsyncDisable() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1475,7 +1475,7 @@ int8_t DABDUINO::RTCsyncDisable() {
  *  Get RTC sync clock status
  *  return data: 0=disable, 1=enable 
  */
-int8_t DABDUINO::getRTCsyncStatus(uint32_t *data) {
+int8_t T3BTuner::getRTCsyncStatus(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1495,7 +1495,7 @@ int8_t DABDUINO::getRTCsyncStatus(uint32_t *data) {
  *  Get RTC clock status
  *  return data: 0=unset, 1=set 
  */
-int8_t DABDUINO::getRTCclockStatus(uint32_t *data) {
+int8_t T3BTuner::getRTCclockStatus(uint32_t *data) {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1525,7 +1525,7 @@ int8_t DABDUINO::getRTCclockStatus(uint32_t *data) {
 /*
  *   Enable event notification
  */
-int8_t DABDUINO::eventNotificationEnable() {
+int8_t T3BTuner::eventNotificationEnable() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
@@ -1540,7 +1540,7 @@ int8_t DABDUINO::eventNotificationEnable() {
 /*
  *   Disable event notification
  */
-int8_t DABDUINO::eventNotificationDisable() {
+int8_t T3BTuner::eventNotificationDisable() {
 
   uint8_t dabData[DAB_MAX_DATA_LENGTH];
   uint32_t dabDataSize;
