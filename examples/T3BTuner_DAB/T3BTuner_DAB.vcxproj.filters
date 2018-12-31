@@ -7,10 +7,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="DABDUINO_example_2.ino" />
+    <None Include="T3BTuner_DAB.ino" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="__vm\.DABDUINO_example_2.vsarduino.h">
+    <ClInclude Include="__vm\.T3BTuner_DAB.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

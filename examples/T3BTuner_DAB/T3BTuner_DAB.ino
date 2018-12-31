@@ -6,7 +6,7 @@
 */
 
 #include <SoftwareSerial.h>
-#include "DABDUINO.h"
+#include "T3BTuner.h"
 
 #define SERIAL_PORT Serial1
 #define RESET_PIN 7
