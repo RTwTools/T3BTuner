@@ -30,12 +30,12 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\Jeroe\Source\Repos\RTwTools\T3BTuner\src\T3BTuner.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\T3BTuner.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\Jeroe\Source\Repos\RTwTools\T3BTuner\src\T3BTuner.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\T3BTuner.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
