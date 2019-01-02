@@ -13,7 +13,7 @@
 #define DAC_MUTE_PIN 9
 #define SPI_CS_PIN 10
 
-DABDUINO dab = DABDUINO(&SERIAL_PORT, STREAM_HARDWARE, RESET_PIN, DAC_MUTE_PIN, SPI_CS_PIN);
+T3BTuner tuner = T3BTuner(&SERIAL_PORT, StreamType::HardwareSerial, RESET_PIN, DAC_MUTE_PIN, SPI_CS_PIN);
 
 // DAB variables
 char dabText[DAB_MAX_TEXT_LENGTH];
@@ -25,8 +25,8 @@ void setup() {
   Serial.begin(57600);
 
   Serial.println("DAB RESET & START");
-  dab.init();
-  if (!dab.reset()) {
+  tuner.init();
+  if (!tuner.Reset()) {
     Serial.println("DAB NOT READY");
     while (1) {}
   }
@@ -41,47 +41,51 @@ void setup() {
   Serial.println("DAB READY");
 
   Serial.print("Search for DAB programs:");
-  dab.searchDAB(1);
+  tuner.DabSearch();
 
-  uint32_t status;
-  uint32_t lastStatus;
+  TunerState status;
+  TunerState lastStatus;
 
-  while (true) {
-    dab.playStatus(&status);
+  while (true)
+  {
+    tuner.State(&status);
     if (status != lastStatus) {
       Serial.println();
-      switch (status) {
-        case 0:
-          Serial.print("Playing");
-          break;
-        case 1:
-          Serial.print("Searching");
-          break;
-        case 2:
-          Serial.print("Tuning");
-          break;
-        case 3:
-          Serial.print("Stop");
-          break;
-        case 4:
-          Serial.print("Sorting");
-          break;
-        case 5:
-          Serial.print("Reconfiguration");
-          break;
+      switch (status)
+      {
+      case TunerState::Playing:
+        Serial.print("Playing");
+        break;
+      case TunerState::Searching:
+        Serial.print("Searching");
+        break;
+      case TunerState::Tuning:
+        Serial.print("Tuning");
+        break;
+      case TunerState::Stopped:
+        Serial.print("Stopped");
+        break;
+      case TunerState::Sorting:
+        Serial.print("Sorting");
+        break;
+      case TunerState::Reconfiguring:
+        Serial.print("Reconfiguring");
+        break;
+      default:
+        break;
       }
     }
-    if (status == 0 || status == 3) break;
+    if (status == TunerState::Playing || status == TunerState::Stopped) break;
     lastStatus = status;
     Serial.print(".");
     delay(1000);
   }
   Serial.println("");
 
-  dab.getProgramIndex(&programsIndex);
+  tuner.NowPlaying(&programsIndex);
   Serial.println("Available programs: ");
   for (uint32_t i = 0; i <= programsIndex; i++) {
-    if (dab.getProgramLongName(i, dabText)) {
+    if (tuner.DabStationName(i, dabText)) {
       Serial.print(i);
       Serial.print("\t ");
       Serial.println(dabText);
@@ -89,17 +93,17 @@ void setup() {
   }
   Serial.println();
 
-  if (dab.setAudioOutput(true, true)) { // 1st = spdiv (optical), 2st = cinch (analog)
+  if (tuner.AudioOutput()) { // 1st = spdiv (optical), 2st = cinch (analog)
     Serial.println("Set audio output");
   }
 
-  if (dab.setVolume(8)) { // Set volume: 0..16
+  if (tuner.VolumeSet(8)) { // Set volume: 0..16
     Serial.println("Set volume");
   }
 
   programIndex = 0;
 
-  if (dab.eventNotificationEnable()) {
+  if (tuner.Notifications(true)) {
     Serial.println("Event notification enabled");
   }
 }
@@ -114,8 +118,8 @@ void loop() {
       programIndex = 0;
     }
 
-    if (dab.playDAB(programIndex)) {
-      if (dab.getProgramLongName(programIndex, dabText)) {
+    if (tuner.PlayDab(programIndex)) {
+      if (tuner.DabStationName(programIndex, dabText)) {
         Serial.print("Tuned program: (");
         Serial.print(programIndex);
         Serial.print(") ");
@@ -126,15 +130,15 @@ void loop() {
 
   // EVENTS
   // EVENT TYP: 1=scan finish, 2=got new DAB program text, 3=DAB reconfiguration, 4=DAB channel list order change, 5=RDS group, 6=Got new FM radio text, 7=Return the scanning frequency /FM/
-  if (dab.isEvent()) {
+  if (tuner.isEvent()) {
 
-    switch (dab.readEvent()) {
+    switch (tuner.readEvent()) {
       case 1:
         Serial.println("DAB program search finished.");
         break;
       case 2:
         //do something when New DAB progam text
-        if (dab.getProgramText(dabText)) { // new text
+        if (tuner.DabStationText(dabText)) { // new text
           Serial.print("DAB text event: ");
           Serial.println(dabText);
         }

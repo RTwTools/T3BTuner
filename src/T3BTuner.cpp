@@ -9,19 +9,76 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
+#define COMMAND_SIZE_INDEX 5
 #define COMMAND_START 0xFE
-#define COMMAND_OPTION_NONE 0x00
-#define COMMAND_OPTION_GET 0x00
-#define COMMAND_OPTION_SET 0x01
+#define COMMAND_EMPTY 0x00
 #define COMMAND_END 0xFD
 
-#define COMMAND_SYSTEM 0x00
-#define COMMAND_SYSTEM_READY 0x00
-#define COMMAND_SYSTEM_RESET 0x01
-#define COMMAND_SYSTEM_AUDIO 0x06
+#define CMD_SYSTEM 0x00
+#define CMD_STREAM 0x01
+#define CMD_RTC 0x02
+#define CMD_EVENTS 0x07
 
-#define COMMAND_STREAM 0x01
-#define COMMAND_STREAM_PROGRAM_NAME 0x0F
+#define SYSTEM_READY 0x00
+#define SYSTEM_RESET 0x01
+#define SYSTEM_AUDIO_OUTPUT 0x06
+
+#define STREAM_PLAY 0x00
+#define STREAM_PLAY_DAB 0x00
+#define STREAM_PLAY_FM 0x01
+#define STREAM_PLAY_BEEP 0x02
+#define STREAM_STOP 0x01
+#define STREAM_FM_SEARCH 0x02
+#define STREAM_DAB_SEARCH 0x03
+#define STREAM_STATUS 0x05
+#define STREAM_MODE 0x06
+#define STREAM_NOW_PLAYING 0x07
+#define STREAM_SIGNAL_STRENGTH 0x08
+#define STREAM_STEREO_MODE_SET 0x09
+#define STREAM_STEREO_MODE_GET 0x0A
+#define STREAM_STEREO_TYPE 0x0B
+#define STREAM_VOLUME_SET 0x0C
+#define STREAM_VOLUME_GET 0x0D
+#define STREAM_STATION_TYPE 0x0E
+#define STREAM_DAB_STATION_NAME 0x0F
+#define STREAM_DAB_STATION_TEXT 0x10
+#define STREAM_SAMPLE_RATE 0x11
+#define STREAM_DAB_DATA_RATE 0x12
+#define STREAM_DAB_SIGNAL_QUALITY 0x13
+#define STREAM_DAB_FREQUENCY 0x14
+#define STREAM_DAB_ENSEMBLE_NAME 0x15
+#define STREAM_DAB_STATION_COUNT 0x16
+#define STREAM_DAB_STATION_ON_AIR 0x17
+#define STREAM_DAB_STATION_SERVICE_NAME 0x1A
+#define STREAM_DAB_FOUND_STATIONS_COUNT 0x1B
+#define STREAM_DAB_STATION_TYPE 0x1E
+#define STREAM_MEMORY_SET 0x21
+#define STREAM_MEMORY_GET 0x22
+#define STREAM_DAB_STATION_INFO 0x23
+#define STREAM_DAB_SORT_GET 0x24
+#define STREAM_DAB_SORT_SET 0x25
+#define STREAM_DAB_DRC_GET 0x26
+#define STREAM_DAB_DRC_SET 0x27
+#define STREAM_DAB_REMOVE_OFF_AIR 0x2B
+#define STREAM_DAB_EXTENDED_COUNTRY_CODE 0x2D
+#define STREAM_FM_RDS_PI_CODE 0x2E
+#define STREAM_FM_STEREO_THRESHOLD_LEVEL_SET 0x30
+#define STREAM_FM_STEREO_THRESHOLD_LEVEL_GET 0x31
+#define STREAM_FM_RDS_DATA 0x32
+#define STREAM_FM_SEEK_TRESHOLD_SET 0x35
+#define STREAM_FM_SEEK_TRESHOLD_GET 0x36
+#define STREAM_FM_STEREO_TRESHOLD_SET 0x37
+#define STREAM_FM_STEREO_TRESHOLD_GET 0x38
+#define STREAM_FM_EXACT_STATION 0x39
+
+#define RTC_SET 0x00
+#define RTC_GET 0x01
+#define RTC_SYNC 0x02
+#define RTC_SYNC_STATUS 0x03
+#define RTC_STATUS_CLOCK 0x04
+
+#define EVENTS_NOTIFY 0x00
+
 
 T3BTuner::T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin, uint8_t dacMutePin, uint8_t spiCsPin) :
   stream(stream),
@@ -37,44 +94,67 @@ void T3BTuner::commandAppend(uint8_t data)
   // TODO Check if index is too big for data!
 
   command[commandSize] = data;
+  command[COMMAND_SIZE_INDEX] = command[COMMAND_SIZE_INDEX] + 1;
   commandSize++;
 }
 
 void T3BTuner::commandAppend(uint32_t data)
 {
-  for (size_t i = 24; i >= 0; i = i - 8)
-  {
-    uint8_t dataPart = ((data >> i) & 0xFF);
-    commandAppend(dataPart);
-  }
+  commandAppend((uint8_t)((data >> 24) & 0xFF));
+  commandAppend((uint8_t)((data >> 16) & 0xFF));
+  commandAppend((uint8_t)((data >> 8) & 0xFF));
+  commandAppend((uint8_t)((data >> 0) & 0xFF));
 }
 
-void T3BTuner::commandStart(uint8_t type, uint8_t command, uint8_t option)
+void T3BTuner::commandStart(uint8_t type, uint8_t subType)
 {
-  commandSize = 0;
-  commandAppend((uint8_t)COMMAND_START);
-  commandAppend(type);
-  commandAppend(command);
-  commandAppend((uint8_t)COMMAND_OPTION_NONE);
-  commandAppend((uint8_t)COMMAND_OPTION_NONE);
-  commandAppend(option);
+  command[0] = COMMAND_START;
+  command[1] = type;
+  command[2] = subType;
+  command[3] = COMMAND_EMPTY;
+  command[4] = COMMAND_EMPTY;
+  command[5] = COMMAND_EMPTY;
+  commandSize = 6;
 }
 
 void T3BTuner::commandEnd()
 {
-  commandAppend((uint8_t)COMMAND_END);
+  command[commandSize++] = COMMAND_END;
 }
 
-void T3BTuner::commandCreate(uint8_t type, uint8_t command, uint8_t option)
+void T3BTuner::commandCreate(uint8_t type, uint8_t command)
 {
-  commandStart(type, command, option);
+  commandStart(type, command);
   commandEnd();
 }
 
-void T3BTuner::commandCreate(uint8_t type, uint8_t command, uint8_t option, uint8_t param)
+void T3BTuner::commandCreate(uint8_t type, uint8_t subType, uint8_t param)
 {
-  commandStart(type, command, option);
+  commandStart(type, subType);
   commandAppend(param);
+  commandEnd();
+}
+
+void T3BTuner::commandCreate(uint8_t type, uint8_t subType, uint32_t param)
+{
+  commandStart(type, subType);
+  commandAppend(param);
+  commandEnd();
+}
+
+void T3BTuner::commandCreatePlay(uint8_t playType, uint32_t param)
+{
+  commandStart(CMD_STREAM, STREAM_PLAY);
+  commandAppend(playType);
+  commandAppend(param);
+  commandEnd();
+}
+
+void T3BTuner::commandCreateName(uint8_t subType, uint32_t program, bool longName)
+{
+  commandStart(CMD_STREAM, subType);
+  commandAppend(program);
+  commandAppend((uint8_t)longName);
   commandEnd();
 }
 
@@ -212,14 +292,11 @@ void T3BTuner::streamBegin(uint32_t baud)
 {
   switch (streamType)
   {
-  case STREAM_HARDWARE:
+  case StreamType::HardwareSerial:
     static_cast<HardwareSerial*>(stream)->begin(baud);
     break;
-  case STREAM_SOFTWARE:
+  case StreamType::SoftwareSerial:
     static_cast<SoftwareSerial*>(stream)->begin(baud);
-    break;
-  default:
-    // Error, do nothing.
     break;
   }
 }
@@ -232,7 +309,8 @@ int8_t T3BTuner::isEvent() {
  *   Read event
  *   RETURN EVENT TYP: 1=scan finish, 2=got new DAB program text, 3=DAB reconfiguration, 4=DAB channel list order change, 5=RDS group, 6=Got new FM radio text, 7=Return the scanning frequency /FM/
  */
-int8_t T3BTuner::readEvent() {
+int8_t T3BTuner::readEvent()
+{
   uint8_t eventData[16];
   uint8_t dabReturn[6];
   uint8_t isPacketCompleted = 0;
@@ -269,57 +347,6 @@ int8_t T3BTuner::readEvent() {
   }
   if (isPacketCompleted == 1 && dabReturn[1] == 0x07) {
     return dabReturn[2] + 1;
-  } else {
-    return 0;
-  }
-}
-
-/*
- *  Send command to DAB module and wait for answer
- */
-int8_t T3BTuner::sendCommand(uint8_t dabCommand[], uint8_t dabData[], uint32_t *dabDataSize) {
-
-  uint8_t dabReturn[6];
-  uint8_t isPacketCompleted = 0;
-  uint16_t byteIndex = 0;
-  uint16_t dataIndex = 0;
-  uint8_t serialData = 0;
-  *dabDataSize = 0;
-  while (stream->available() > 0) {
-    stream->read();
-  }
-  while (byteIndex < 255) {
-    if (dabCommand[byteIndex++] == 0xFD) break;
-  }
-  stream->write(dabCommand, byteIndex);
-  stream->flush();
-  byteIndex = 0;
-  unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
-  while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (stream->available() > 0) {
-      serialData = stream->read();
-      if (serialData == 0xFE) {
-        byteIndex = 0;
-        dataIndex = 0;
-      }
-      if (*dabDataSize && dataIndex < *dabDataSize) {
-        dabData[dataIndex++] = serialData;
-      }
-      if (byteIndex <= 5) {
-        dabReturn[byteIndex] = serialData;
-      }
-      if (byteIndex == 5) {
-        *dabDataSize = (((long)dabReturn[4] << 8) + (long)dabReturn[5]);
-      }
-      if ((int16_t)(byteIndex - *dabDataSize) >= 5 && serialData == 0xFD) {
-        isPacketCompleted = 1;
-        break;
-      }
-      byteIndex++;
-    }
-  }
-  if (isPacketCompleted == 1 && !(dabReturn[1] == 0x00 && dabReturn[2] == 0x02)) {
-    return 1;
   } else {
     return 0;
   }
@@ -381,17 +408,17 @@ bool T3BTuner::commandSend() {
  */
 bool T3BTuner::Ready()
 {
-  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_READY, COMMAND_OPTION_NONE);
+  commandCreate(CMD_SYSTEM, SYSTEM_READY);
   return commandSend();
 }
 
 /*
- *   Reset DAB module only
+ *   Reset module.
+ *   FullReset => Reset module database & module.
  */
-bool T3BTuner::Reset(DabSystemReset reset) // TODO CHECK ENUM VALUE?
+bool T3BTuner::Reset(bool fullReset)
 {
-  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_RESET, COMMAND_OPTION_SET, (uint8_t)reset);
-
+  commandCreate(CMD_SYSTEM, SYSTEM_RESET, (uint8_t)fullReset);
   bool result = commandSend();
   if (result) init();  
   return result;
@@ -404,7 +431,7 @@ bool T3BTuner::Reset(DabSystemReset reset) // TODO CHECK ENUM VALUE?
 bool T3BTuner::AudioOutput(bool spdiv, bool cinch)
 {
   uint8_t param = (uint8_t)spdiv | ((uint8_t)cinch << 0x1);
-  commandCreate(COMMAND_SYSTEM, COMMAND_SYSTEM_AUDIO, COMMAND_OPTION_SET, param);
+  commandCreate(CMD_SYSTEM, SYSTEM_AUDIO_OUTPUT, param);
   return commandSend();
 }
 
@@ -416,189 +443,108 @@ bool T3BTuner::AudioOutput(bool spdiv, bool cinch)
  *   Play DAB program
  *   programIndex = 1..9999999 (see programs index)
  */
-int8_t T3BTuner::playDAB(uint32_t programIndex) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::PlayDab(uint32_t stationId)
+{
+  commandCreatePlay(STREAM_PLAY_DAB, stationId);
+  return commandSend();
 }
 
 /*
  *   Play FM program
  *   frequency = 87500..108000 (MHz)
  */
-int8_t T3BTuner::playFM(uint32_t frequency) {
+bool T3BTuner::PlayFm(uint32_t frequency)
+{
+  commandCreatePlay(STREAM_PLAY_FM, frequency);
+  return commandSend();
+}
 
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t Byte0 = ((frequency >> 0) & 0xFF);
-  uint8_t Byte1 = ((frequency >> 8) & 0xFF);
-  uint8_t Byte2 = ((frequency >> 16) & 0xFF);
-  uint8_t Byte3 = ((frequency >> 24) & 0xFF);
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x00, 0x00, 0x00, 0x05, 0x01, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+/* 
+ *   Play Beep.
+ */
+bool T3BTuner::PlayBeep()
+{
+  commandCreatePlay(STREAM_PLAY_BEEP, 0x00);
+  return commandSend();
 }
 
 /*
- *   Play BEEP
+ *   Stop.
  */
-int8_t T3BTuner::playBEEP() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x00, 0x00, 0x00, 0x05, 0x02, 0x00, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::Stop()
+{
+  commandCreate(CMD_STREAM, STREAM_STOP);
+  return commandSend();
 }
 
 /*
- *   Play STOP
+ * Seek FM program.
  */
-int8_t T3BTuner::playSTOP() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x01, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmSearch(bool searchForward)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_SEARCH, (uint8_t)searchForward);
+  return commandSend();
 }
 
 /*
- * Search DAB bands for programs
- * zone: 1=BAND-3, 2=CHINA-BAND, 3=L-BAND
+ * Search DAB bands for programs.
  */
-
-int8_t T3BTuner::searchDAB(uint32_t band) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-
-  uint8_t chStart = 0;
-  uint8_t chEnd = 40;
-
-  switch (band) {
-  case 1:
-    chStart = 0;
-    chEnd = 40;
+bool T3BTuner::DabSearch(DabBand band)
+{
+  commandStart(CMD_STREAM, STREAM_DAB_SEARCH);
+  switch (band)
+  {
+  case DabBand::Band3:
+    commandAppend((uint8_t)0);
+    commandAppend((uint8_t)40);
     break;
-  case 2:
-    chStart = 41;
-    chEnd = 71;
+  case DabBand::ChinaBand:
+    commandAppend((uint8_t)41);
+    commandAppend((uint8_t)71);
     break;
-  case 3:
-    chStart = 72;
-    chEnd = 94;
+  case DabBand::LBand:
+    commandAppend((uint8_t)72);
+    commandAppend((uint8_t)94);
     break;
   }
-
-  uint8_t dabCommand[9] = { 0xFE, 0x01, 0x03, 0x00, 0x00, 0x02, chStart, chEnd, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+  commandEnd();
+  return commandSend();
 }
 
 /*
- * Seek FM program - searchDirection: 0=backward, 1=forward
+ *   Radio module play status.
  */
-int8_t T3BTuner::searchFM(uint32_t searchDirection) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  if (searchDirection < 0) searchDirection = 0;
-  if (searchDirection > 1) searchDirection = 1;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x02, 0x00, 0x00, 0x01, searchDirection, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::State(TunerState *status)
+{
+  commandCreate(CMD_STREAM, STREAM_STATUS);
+  bool result = commandSend();
+  *status = (TunerState)response[0];
+  return result;
 }
 
 /*
- *   Radio module play status
- *   return data: 0=playing, 1=searching, 2=tuning, 3=stop, 4=sorting change, 5=reconfiguration
+ *   Radio module play mode.
  */
-int8_t T3BTuner::playStatus(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x05, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::Mode(TunerMode *mode)
+{
+  commandCreate(CMD_STREAM, STREAM_MODE);
+  bool result = commandSend();
+  *mode = (TunerMode)response[0];
+  return result;
 }
 
 /*
- *   Radio module play mode
- *   return data: 0=DAB, 1=FM, 2=BEEP, 255=Stream stop
+ * Get DAB stationId, get FM frequency.
  */
-int8_t T3BTuner::playMode(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x06, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      if (dabData[0] != 0xFF) {
-        *data = (uint32_t)dabData[0];
-        return 1;
-      } else {
-        *data = (uint32_t)dabData[0];
-        return 1;
-      }
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
-}
-
-/*
- * Get DAB station index, get tuned FM station frequency
- */
-int8_t T3BTuner::getPlayIndex(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x07, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize == 4) {
-      *data = (((long)dabData[0] << 24) + ((long)dabData[1] << 16) + ((long)dabData[2] << 8) + (long)dabData[3]);
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::NowPlaying(uint32_t* programId)
+{
+  commandCreate(CMD_STREAM, STREAM_NOW_PLAYING);
+  bool result = commandSend();
+  *programId = ((uint32_t)response[3]);
+  *programId |= ((uint32_t)response[2] << 8);
+  *programId |= ((uint32_t)response[1] << 16);
+  *programId |= ((uint32_t)response[0] << 24);
+  return result;
 }
 
 /*
@@ -606,189 +552,94 @@ int8_t T3BTuner::getPlayIndex(uint32_t *data) {
  * DAB: signalStrength=0..18, bitErrorRate=
  * FM: signalStrength=0..100
  */
-int8_t T3BTuner::getSignalStrength(uint32_t *signalStrength, uint32_t *bitErrorRate) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x08, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    *signalStrength = (uint32_t)dabData[0];
-    *bitErrorRate = 0;
-    if (dabDataSize > 1) {
-      *bitErrorRate =  (((long)dabData[1] << 8) + (long)dabData[2]);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::SignalStrength(uint8_t* signalStrength, uint16_t* bitErrorRate)
+{
+  commandCreate(CMD_STREAM, STREAM_SIGNAL_STRENGTH);
+  bool result = commandSend();
+  *signalStrength = response[0];
+  *bitErrorRate = (uint16_t)response[2];
+  *bitErrorRate |= (uint16_t)response[1] << 8;
+  return result;
 }
 
 /*
- *   Set stereo mode
- *   true=stereo, false=force mono
+ *   Set stereo mode.
  */
-int8_t T3BTuner::setStereoMode(bool stereo) {
-
-  int32_t value = 0;
-  if (stereo == true) {
-    value = 1;
-  }
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x09, 0x00, 0x00, 0x01, value, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::StereoModeSet(StereoMode stereoMode)
+{
+  commandCreate(CMD_STREAM, STREAM_STEREO_MODE_SET, (uint8_t)stereoMode);
+  return commandSend();
 }
 
 /*
- *   Get stereo mode
- *   0=force mono, 1=auto detect stereo
+ *   Get stereo mode.
  */
-int8_t T3BTuner::getStereoMode(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x0A, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::StereoModeGet(StereoMode* stereoMode)
+{
+  commandCreate(CMD_STREAM, STREAM_STEREO_MODE_GET);
+  bool result = commandSend();
+  *stereoMode = (StereoMode)response[0];
+  return result;
 }
 
 /*
  *   Get stereo type
- *   return data: 0=stereo, 1=join stereo, 2=dual channel, 3=single channel (mono)
  */
-int8_t T3BTuner::getStereoType(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x0B, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::StereoTypeGet(StereoType* stereotype)
+{
+  commandCreate(CMD_STREAM, STREAM_STEREO_TYPE);
+  bool result = commandSend();
+  *stereotype = (StereoType)response[0];
+  return result;
 }
 
 /*
- *   Set volume
+ *   Set volume.
  *   volumeLevel = 0..16
  */
-int8_t T3BTuner::setVolume(uint32_t volumeLevel) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  if (volumeLevel < 0) volumeLevel = 0;
-  if (volumeLevel > 16)  volumeLevel = 16;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x0C, 0x00, 0x00, 0x01, volumeLevel, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::VolumeSet(uint8_t volume)
+{
+  uint8_t volumeValue = (volume > 16) ? 16 : volume;
+  commandCreate(CMD_STREAM, STREAM_VOLUME_SET, volumeValue);
+  return commandSend();
 }
 
 /*
- *   Get volume
+ *   Get volume.
  *   return set volumeLevel: 0..16
  */
-int8_t T3BTuner::getVolume(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x0D, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::VolumeGet(uint8_t *volume)
+{
+  commandCreate(CMD_STREAM, STREAM_VOLUME_GET);
+  bool result = commandSend();
+  *volume = response[0];
+  return result;
 }
 
 /*
- *   Get program type
- *   0=N/A, 1=News, 2=Curent Affairs, 3=Information, 4=Sport, 5=Education, 6=Drama, 7=Arts, 8=Science, 9=Talk, 10=Pop music, 11=Rock music, 12=Easy listening, 13=Light Classical, 14=Classical music, 15=Other music, 16=Weather, 17=Finance, 18=Children's, 19=Factual, 20=Religion, 21=Phone in, 22=Travel, 23=Leisure, 24=Jazz & Blues, 25=Country music, 26=National music, 27=Oldies music, 28=Folk Music, 29=Documentary, 30=undefined, 31=undefined
+ *   Get program type.
  */
-int8_t T3BTuner::getProgramType(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x0E, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::StationTypeGet(StationType* programType)
+{
+  commandCreate(CMD_STREAM, STREAM_STATION_TYPE);
+  bool result = commandSend();
+  *programType = (StationType)response[0];
+  return result;
 }
 
 /*
- * Get DAB station short name
+ * Get DAB station name.
  */
-int8_t T3BTuner::getProgramShortName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x0F, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
+bool T3BTuner::DabStationName(uint32_t stationId, char* name, bool longName)
+{
+  commandCreateName(STREAM_DAB_STATION_NAME, stationId, longName);
+  bool result = commandSend();
+  uint8_t j = 0;
+  for (uint32_t i = 0; i < responseSize; i = i + 2)
+  {
+    name[j++] = charToAscii(response[i], response[i + 1]);
   }
-}
-
-/*
- * Get DAB station long name
- */
-int8_t T3BTuner::getProgramLongName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x0F, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x01, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
+  return result;
 }
 
 /*
@@ -796,74 +647,55 @@ int8_t T3BTuner::getProgramLongName(uint32_t programIndex, char text[]) {
  * return: 1=new text, 2=text is same, 3=no text
  * dabText: text
  */
-int8_t T3BTuner::getProgramText(char text[]) {
+bool T3BTuner::DabStationText(char* text)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_STATION_TEXT);
+  if (commandSend())
+  {
+    if (responseSize == 1)
+    {
+      // No text received
+      // Response[0] value => 0 = No text available, 1 = Station text is empty.
+      return false;
+    }
 
-  char textLast[DAB_MAX_TEXT_LENGTH];
-  memcpy(textLast, text, sizeof(text[0])*DAB_MAX_TEXT_LENGTH);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x10, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize == 1) {
-      text[0] = dabData[0]; // 0=There is no text in programe, 1=The program text received, but no text available
-      text[1] = 0x00;
-      return 3; // No error, but no text
-    }
+    // Get text.
     int32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
+    for (uint32_t i = 0; i < responseSize; i = i + 2)
+    {
+      text[j++] = charToAscii(response[i], response[i + 1]);
     }
-    for (uint32_t i = 0; i < j; i++) {
-      if (text[i] != textLast[i]) {
-        return 1; // New dab text
-      }
-    }
-    return 2; // Same dab text
-  } else {
-    return 0;
+
+    bool changed = (strncmp(text, dabProgramText, sizeof(dabProgramText)) == 0);
+    strncpy(dabProgramText, text, sizeof(dabProgramText));
+    return changed;
   }
+
+  return false;
 }
 
 /*
- *   Get sampling rate (DAB/FM)
- *   return data: 1=32kHz, 2=24kHz, 3=48kHz
+ *   Get sampling rate (DAB/FM).
  */
-int8_t T3BTuner::getSamplingRate(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x11, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::SampleRateGet(SampleRate* sampleRate)
+{
+  commandCreate(CMD_STREAM, STREAM_SAMPLE_RATE);
+  bool result = commandSend();
+  *sampleRate = (SampleRate)response[0];
+  return result;
 }
 
 /*
  *   Get data rate (DAB)
  *   return data: data rate in kbps
  */
-int8_t T3BTuner::getDataRate(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x12, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (((long)dabData[0] << 8) + (long)dabData[1]);
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabDataRate(uint16_t* dataRate)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_DATA_RATE);
+  bool result = commandSend();
+  *dataRate = (uint16_t)response[1];
+  *dataRate |= (uint16_t)response[0] << 8;
+  return result;
 }
 
 /*
@@ -873,21 +705,12 @@ int8_t T3BTuner::getDataRate(uint32_t *data) {
  *   20..30 = the noise (short break) appears
  *   100 = the bit error rate is 0
  */
-int8_t T3BTuner::getSignalQuality(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x13, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabSignalQuality(uint8_t* data)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_SIGNAL_QUALITY);
+  bool result = commandSend();
+  *data = response[0];
+  return result;
 }
 
 /*
@@ -897,366 +720,189 @@ int8_t T3BTuner::getSignalQuality(uint32_t *data) {
  *
  *  // TODO: add conversion table for index2freqency
  */
-int8_t T3BTuner::getFrequency(uint32_t programIndex, uint32_t *data) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[11] = { 0xFE, 0x01, 0x14, 0x00, 0x00, 0x04, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabStationFrequency(uint32_t stationId, uint8_t* frequency)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_FREQUENCY, stationId);
+  bool result = commandSend();
+  *frequency = response[0];
+  return result;
 }
 
 /*
- * Get DAB program ensemble short name
+ * Get DAB program ensemble name.
  */
-int8_t T3BTuner::getEnsembleShortName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x15, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
+bool T3BTuner::DabStationEnsembleName(uint32_t stationId, char* name, bool longName)
+{
+  commandCreateName(STREAM_DAB_ENSEMBLE_NAME, stationId, longName);
+  bool result = commandSend();
+  uint8_t j = 0;
+  for (uint32_t i = 0; i < responseSize; i = i + 2)
+  {
+    name[j++] = charToAscii(response[i], response[i + 1]);
   }
+  return result;
 }
 
 /*
- * Get DAB program ensemble long name
+ * Number of DAB stations in database.
  */
-int8_t T3BTuner::getEnsembleLongName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x15, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x01, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/*
- * Get DAB stations index (number of programs in database)
- */
-int8_t T3BTuner::getProgramIndex(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x16, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize == 4) {
-      *data = (((long)dabData[0] << 24) + ((long)dabData[1] << 16) + ((long)dabData[2] << 8) + (long)dabData[3]);
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabStationCount(uint32_t* count)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_STATION_COUNT);
+  bool result = commandSend();
+  *count = ((uint32_t)response[3]);
+  *count |= ((uint32_t)response[2] << 8);
+  *count |= ((uint32_t)response[1] << 16);
+  *count |= ((uint32_t)response[0] << 24);
+  return result;
 }
 
 /*
  *   Test DAB program is active (on-air)
  *   return: 0=off-air, 1=on-air
  */
-int8_t T3BTuner::isProgramOnAir(uint32_t programIndex) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[11] = { 0xFE, 0x01, 0x17, 0x00, 0x00, 0x04, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      return (uint32_t)dabData[0];
-    } else {
-      return 0;
-    }
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabStationOnAir(uint32_t stationId, bool* onAir)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_STATION_ON_AIR, stationId);
+  bool result = commandSend();
+  *onAir = (bool)response[0];
+  return result;
 }
 
 /*
  * Get DAB program service short name
  */
-int8_t T3BTuner::getServiceShortName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x1A, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
+bool T3BTuner::DabStationServiceName(uint32_t stationId, char* name, bool longName)
+{
+  commandCreateName(STREAM_DAB_STATION_SERVICE_NAME, stationId, longName);
+  bool result = commandSend();
+  uint8_t j = 0;
+  for (uint32_t i = 0; i < responseSize; i = i + 2)
+  {
+    name[j++] = charToAscii(response[i], response[i + 1]);
   }
+  return result;
 }
 
 /*
- * Get DAB program service long name
+ * Number of programs found in search process.
  */
-int8_t T3BTuner::getServiceLongName(uint32_t programIndex, char text[]) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[12] = { 0xFE, 0x01, 0x1A, 0x00, 0x00, 0x05, Byte3, Byte2, Byte1, Byte0, 0x01, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    uint32_t j = 0;
-    for (uint32_t i = 0; i < dabDataSize; i = i + 2) {
-      text[j++] = charToAscii(dabData[i], dabData[i + 1]);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabFoundStationsCount(uint8_t* count)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_FOUND_STATIONS_COUNT);
+  bool result = commandSend();
+  *count = response[0];
+  return result;
 }
-
-/*
- * Get DAB search index (number of programs found in search process)
- */
-int8_t T3BTuner::getSearchIndex(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x1B, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
-}
-
 
 /*
  * Get DAB program service component type (ASCTy)
- * return data: 0=DAB, 1=DAB+, 2=Packet data, 3=DMB (stream data)
  */
-int8_t T3BTuner::getServCompType(uint32_t programIndex, uint32_t *data) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[11] = { 0xFE, 0x01, 0x1E, 0x00, 0x00, 0x04, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabStationType(uint32_t stationId, DabStreamType* type)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_STATION_TYPE, stationId);
+  bool result = commandSend();
+  *type = (DabStreamType)response[0];
+  return result;
 }
 
 /*
  *   Set preset
- *   programIndex = DAB: programIndex, FM: frequency
- *   presetIndex = 0..9
- *   presetMode = 0=DAB, 1=FM
  */
-int8_t T3BTuner::setPreset(uint32_t programIndex, uint32_t presetIndex, uint32_t presetMode) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[13] = { 0xFE, 0x01, 0x21, 0x00, 0x00, 0x06, presetMode, presetIndex, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::MemorySet(MemoryType mode, MemoryId id, uint32_t programId)
+{
+  commandStart(CMD_STREAM, STREAM_MEMORY_SET);
+  commandAppend((uint8_t)mode);
+  commandAppend((uint8_t)id);
+  commandAppend(programId);
+  commandEnd();
+  return commandSend();
 }
 
 /*
  *  Get preset
- *  presetIndex = 0..9
- *  presetMode = 0=DAB, 1=FM
  */
-int8_t T3BTuner::getPreset(uint32_t presetIndex, uint32_t presetMode, uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[9] = { 0xFE, 0x01, 0x22, 0x00, 0x00, 0x02, presetMode, presetIndex, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if(dabDataSize) {
-      *data = (((long)dabData[0] << 24) + ((long)dabData[1] << 16) + ((long)dabData[2] << 8) + (long)dabData[3]);
-    }
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::MemoryGet(MemoryType mode, MemoryId id, uint32_t* programId)
+{
+  commandStart(CMD_STREAM, STREAM_MEMORY_GET);
+  commandAppend((uint8_t)mode);
+  commandAppend((uint8_t)id);
+  commandEnd();
+  bool result = commandSend();
+  *programId = ((uint32_t)response[3]);
+  *programId |= ((uint32_t)response[2] << 8);
+  *programId |= ((uint32_t)response[1] << 16);
+  *programId |= ((uint32_t)response[0] << 24);
+  return result;
 }
 
 /*
- * Get program info
+ * Get station info
  * return serviceId = service id of DAB program
  * return ensembleId = ensemble id of DAB program
  */
-int8_t T3BTuner::getProgramInfo(uint32_t programIndex, uint32_t *serviceId, uint32_t *ensembleId) {
-
-  uint8_t Byte0 = ((programIndex >> 0) & 0xFF);
-  uint8_t Byte1 = ((programIndex >> 8) & 0xFF);
-  uint8_t Byte2 = ((programIndex >> 16) & 0xFF);
-  uint8_t Byte3 = ((programIndex >> 24) & 0xFF);
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[11] = { 0xFE, 0x01, 0x23, 0x00, 0x00, 0x04, Byte3, Byte2, Byte1, Byte0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *serviceId = (((long)dabData[0] << 24) + ((long)dabData[1] << 16) + ((long)dabData[2] << 8) + (long)dabData[3]);
-      *ensembleId = (((long)dabData[4] << 8) + (long)dabData[5]);
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabStationInfo(uint32_t stationId, uint32_t* serviceId, uint16_t* ensembleId)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_STATION_INFO, stationId);
+  bool result = commandSend();
+  *serviceId = ((uint32_t)response[3]);
+  *serviceId |= ((uint32_t)response[2] << 8);
+  *serviceId |= ((uint32_t)response[1] << 16);
+  *serviceId |= ((uint32_t)response[0] << 24);
+  *ensembleId = (((uint16_t)response[4] << 8) + (uint16_t)response[5]);
+  return result;
 }
 
 /*
- * Get program sorter
- * return data = 0=sort by ensembleID, 1=sort by service name, 2=sort by active and inactive program
+ *   Get DAB station sort order.
  */
-int8_t T3BTuner::getProgramSorter(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x24, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabSortGet(DabSortOrder *sortOrder)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_SORT_GET);
+  bool result = commandSend();
+  *sortOrder = (DabSortOrder)response[0];
+  return result;
 }
 
 /*
- *   Set program sorter
- *   sortMethod = 0=sort by ensembleID, 1=sort by service name, 2=sort by active and inactive program
+ *   Set DAB station sort order.
  */
-int8_t T3BTuner::setProgramSorter(uint32_t sortMethod) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x25, 0x00, 0x00, 0x01, sortMethod, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabSortSet(DabSortOrder sortOrder)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_SORT_SET, (uint8_t)sortOrder);
+  return commandSend();
 }
 
 /*
- * Get DRC
- * return data = 0=DRC off, 1=DRC low, 2=DRC high
+ *   Get DAB DRC.
  */
-int8_t T3BTuner::getDRC(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x26, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabDrcGet(DabDrc* drc)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_DRC_GET);
+  bool result = commandSend();
+  *drc = (DabDrc)response[0];
+  return result;
 }
 
 /*
- *   Set DRC
- *   setDRC = 0=DRC off, 1=DRC low, 2=DRC high
+ *   Set DAB DRC.
  */
-int8_t T3BTuner::setDRC(uint32_t setDRC) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x27, 0x00, 0x00, 0x01, setDRC, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabDrcSet(DabDrc drc)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_DRC_SET, (uint8_t)drc);
+  return commandSend();
 }
-
 
 /*
  *   Prune programs - delete inactive programs (!on-air)
- *
  */
-int8_t T3BTuner::prunePrograms(uint32_t *prunedTotalPrograms, uint32_t *prunedProgramIndex) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x2B, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *prunedTotalPrograms = (((long)dabData[0] << 8) + (long)dabData[1]);
-      *prunedProgramIndex = (((long)dabData[2] << 8) + (long)dabData[3]);
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabRemoveOffAir(uint16_t *removedTotal, uint16_t *removedIndex)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_REMOVE_OFF_AIR);
+  bool result = commandSend();
+  *removedTotal = (((uint16_t)response[0] << 8) + (uint16_t)response[1]);
+  *removedIndex = (((uint16_t)response[2] << 8) + (uint16_t)response[3]);
+  return result;
 }
 
 /*
@@ -1264,202 +910,126 @@ int8_t T3BTuner::prunePrograms(uint32_t *prunedTotalPrograms, uint32_t *prunedPr
  * return ECC (Extended Country Code)
  * return countryId (Country identification)
  */
-int8_t T3BTuner::getECC(uint32_t *ECC, uint32_t *countryId) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x2D, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *ECC = (uint32_t)dabData[0];
-      *countryId = (uint32_t)dabData[1];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::DabExtendedCountryCode(uint8_t* ecc, uint8_t* countryId)
+{
+  commandCreate(CMD_STREAM, STREAM_DAB_EXTENDED_COUNTRY_CODE);
+  bool result = commandSend();
+  *ecc = response[0];
+  *countryId = response[1];
+  return result;
 }
 
 /*
- * Get FM RDS PI code
- * return PI code
+ *   Get FM RDS PI code
  */
-int8_t T3BTuner::getRdsPIcode(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x2E, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (((long)dabData[0] << 8) + (long)dabData[1]);
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmRdsPiCode(uint16_t *code)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_RDS_PI_CODE);
+  bool result = commandSend();
+  *code = (uint16_t)response[1];
+  *code |= (uint16_t)response[0] << 8;
+  return result;
 }
 
 /*
  *   Set FMstereoThdLevel
  *   RSSItresholdLevel = 0..10
  */
-int8_t T3BTuner::setFMstereoThdLevel(uint32_t RSSItresholdLevel) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x30, 0x00, 0x00, 0x01, RSSItresholdLevel, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmStereoTresholdLevelSet(uint8_t level)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_STEREO_THRESHOLD_LEVEL_SET, level);
+  return commandSend();
 }
 
 /*
  *   Get FMstereoThdLevel
  *   data return = 0..10
  */
-int8_t T3BTuner::getFMstereoThdLevel(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x31, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmStereoTresholdLevelGet(uint8_t* level)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_STEREO_THRESHOLD_LEVEL_GET);
+  bool result = commandSend();
+  *level = response[0];
+  return result;
 }
 
 /*
- * Get RDS raw data
- * return: 1=new RDS data, 2=no new RDS data, 3=no RDS data
+ *   Get RDS raw data
+ *   return: 1=new RDS data, 2=no new RDS data, 3=no RDS data
  */
-int8_t T3BTuner::getRDSrawData(uint32_t *RDSblockA, uint32_t *RDSblockB, uint32_t *RDSblockC, uint32_t *RDSblockD, uint32_t *BlerA, uint32_t *BlerB, uint32_t *BlerC, uint32_t *BlerD) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x32, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize > 1) {
-      *RDSblockA = (((long)dabData[0] << 8) + (long)dabData[1]);
-      *RDSblockB = (((long)dabData[2] << 8) + (long)dabData[3]);
-      *RDSblockC = (((long)dabData[4] << 8) + (long)dabData[5]);
-      *RDSblockD = (((long)dabData[6] << 8) + (long)dabData[7]);
-      *BlerA = (((long)dabData[8] << 8) + (long)dabData[9]);
-      *BlerB = (((long)dabData[10] << 8) + (long)dabData[11]);
-      *BlerC = (((long)dabData[12] << 8) + (long)dabData[13]);
-      *BlerD = (((long)dabData[14] << 8) + (long)dabData[15]);
-      return 1;
-    } else {
-      if (dabData[0] == 1) {
-        return 2;
-      } else {
-        return 3;
-      }
-    }
-    return 0;
-  } else {
-    return 0;
+bool T3BTuner::FmRdsRawData(uint16_t* blockA, uint16_t* blockB, uint16_t* blockC, uint16_t* blockD, 
+                            uint16_t* blerA, uint16_t* blerB, uint16_t* blerC, uint16_t* blerD)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_RDS_DATA);
+  if (commandSend() && responseSize > 1)
+  {
+    *blockA = (((uint16_t)response[0] << 8) + (uint16_t)response[1]);
+    *blockB = (((uint16_t)response[2] << 8) + (uint16_t)response[3]);
+    *blockC = (((uint16_t)response[4] << 8) + (uint16_t)response[5]);
+    *blockD = (((uint16_t)response[6] << 8) + (uint16_t)response[7]);
+    *blerA = (((uint16_t)response[8] << 8) + (uint16_t)response[9]);
+    *blerB = (((uint16_t)response[10] << 8) + (uint16_t)response[11]);
+    *blerC = (((uint16_t)response[12] << 8) + (uint16_t)response[13]);
+    *blerD = (((uint16_t)response[14] << 8) + (uint16_t)response[15]);
+    return true;
   }
+  
+  return false;
 }
 
 /*
  *   Set FMseekTreshold
  *   RSSItreshold = 0..100
  */
-int8_t T3BTuner::setFMseekTreshold(uint32_t RSSItreshold) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x35, 0x00, 0x00, 0x01, RSSItreshold, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmSeekTresholdSet(uint8_t treshold)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_SEEK_TRESHOLD_SET, treshold);
+  return commandSend();
 }
 
 /*
  *   Get FMseekTreshold
  *   data return = 0..100
  */
-int8_t T3BTuner::getFMseekTreshold(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x36, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmSeekTresholdGet(uint8_t* treshold)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_SEEK_TRESHOLD_GET);
+  bool result = commandSend();
+  *treshold = response[0];
+  return result;
 }
 
 /*
  *   Set FMstereoTreshold
  *   RSSItreshold = 0..100
  */
-int8_t T3BTuner::setFMstereoTreshold(uint32_t RSSIstereoTreshold) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x01, 0x37, 0x00, 0x00, 0x01, RSSIstereoTreshold, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmStereoTresholdSet(uint8_t treshold)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_STEREO_TRESHOLD_SET, treshold);
+  return commandSend();
 }
 
 /*
  *   Get FMstereoTreshold
  *   data return = 0..100
  */
-int8_t T3BTuner::getFMstereoTreshold(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x38, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmStereoTresholdGet(uint8_t* treshold)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_STEREO_TRESHOLD_GET);
+  bool result = commandSend();
+  *treshold = response[0];
+  return result;
 }
 
 /*
- *   Get FM Exact station
- *   data return: 0=current station is not exact frequency, 1=current station is exact frequency, 0xFE=no station information yet
+ *   Get FM Exact station.
  */
-int8_t T3BTuner::getFMexactStation(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x01, 0x39, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::FmExactStationGet(FmExactStation* exact)
+{
+  commandCreate(CMD_STREAM, STREAM_FM_EXACT_STATION);
+  bool result = commandSend();
+  *exact = (FmExactStation)response[0];
+  return result;
 }
 
 // *************************
@@ -1470,160 +1040,78 @@ int8_t T3BTuner::getFMexactStation(uint32_t *data) {
  *  Set RTC clock
  *  year: 2017=17,2018=18, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59, second: 0..59 
  */
-int8_t T3BTuner::setRTCclock(uint32_t year, uint32_t month, uint32_t day, uint32_t hour, uint32_t minute, uint32_t second) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[14] = { 0xFE, 0x02, 0x00, 0x00, 0x00, 0x07, second, minute, hour, day, 0x00, month, year, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::ClockSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
+{
+  commandStart(CMD_RTC, RTC_SET);
+  commandAppend(second);
+  commandAppend(minute);
+  commandAppend(hour);
+  commandAppend(day);
+  commandAppend((uint8_t)0x00);
+  commandAppend(month);
+  commandAppend(year);
+  commandEnd();
+  return commandSend();
 }
 
 /*
  *  Get RTC ckock
- *  year: 2017=17,2018=18, month: 1..12, week: 0(sat)..6(fri), day: 1..31, hour: 0..23, minute: 0..59, second: 0..59 
+ *  year: 2017=17,2018=18, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59, second: 0..59 
  */
-int8_t T3BTuner::getRTCclock(uint32_t *year, uint32_t *month, uint32_t *week, uint32_t *day, uint32_t *hour, uint32_t *minute, uint32_t *second) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x02, 0x01, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *second = (uint32_t)dabData[0];
-      *minute = (uint32_t)dabData[1];
-      *hour = (uint32_t)dabData[2];
-      *day = (uint32_t)dabData[3];
-      *week = (uint32_t)dabData[4];
-      *month = (uint32_t)dabData[5];
-      *year = (uint32_t)dabData[6];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::ClockGet(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* hour, uint8_t* minute, uint8_t* second)
+{
+  commandCreate(CMD_RTC, RTC_GET);
+  bool result = commandSend();
+  *second = response[0];
+  *minute = response[1];
+  *hour = response[2];
+  *day = response[3];
+  *month = response[5];
+  *year = response[6];
+  return result;
 }
 
 /*
  *  Set RTC sync clock from stream enable
  */
-int8_t T3BTuner::RTCsyncEnable() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x02, 0x02, 0x00, 0x00, 0x01, 1, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/*
- *  Set RTC sync clock from stream disable
- */
-int8_t T3BTuner::RTCsyncDisable() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[8] = { 0xFE, 0x02, 0x02, 0x00, 0x00, 0x01, 0, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::ClockSyncStatusSet(bool enable)
+{
+  commandCreate(CMD_RTC, RTC_SYNC, (uint8_t)enable);
+  return commandSend();
 }
 
 /*
  *  Get RTC sync clock status
- *  return data: 0=disable, 1=enable 
  */
-int8_t T3BTuner::getRTCsyncStatus(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x02, 0x03, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::ClockSyncStatusGet(bool *enabled)
+{
+  commandCreate(CMD_RTC, RTC_SYNC_STATUS);
+  bool result = commandSend();
+  *enabled = response[0];
+  return result;
 }
 
 /*
  *  Get RTC clock status
- *  return data: 0=unset, 1=set 
  */
-int8_t T3BTuner::getRTCclockStatus(uint32_t *data) {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[7] = { 0xFE, 0x02, 0x04, 0x00, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    if (dabDataSize) {
-      *data = (uint32_t)dabData[0];
-      return 1;
-    }
-    return 0;
-  } else {
-    return 0;
-  }
+bool T3BTuner::ClockStatusGet(ClockStatus *status)
+{
+  commandCreate(CMD_RTC, RTC_STATUS_CLOCK);
+  bool result = commandSend();
+  *status = (ClockStatus)response[0];
+  return result;
 }
-
-// ********************************************
-// ***** MOT (Multimedia Object Transfer) *****
-// ********************************************
-
-
-
 
 // *************************
 // ***** NOTIFY ************
 // *************************
 
 /*
- *   Enable event notification
+ *   Enabled / Disable event notifications.
  */
-int8_t T3BTuner::eventNotificationEnable() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[9] = { 0xFE, 0x07, 0x00, 0x00, 0x00, 0x02, 0x00, 0x7F, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
+bool T3BTuner::Notifications(bool enable)
+{
+  uint8_t value = (enable) ? 0x7F : 0x00;
+  commandCreate(CMD_EVENTS, EVENTS_NOTIFY, value);
+  return commandSend();
 }
-
-/*
- *   Disable event notification
- */
-int8_t T3BTuner::eventNotificationDisable() {
-
-  uint8_t dabData[DAB_MAX_DATA_LENGTH];
-  uint32_t dabDataSize;
-  uint8_t dabCommand[9] = { 0xFE, 0x07, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0xFD };
-  if (sendCommand(dabCommand, dabData, &dabDataSize)) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-
-
-
-
-
-
-
-
