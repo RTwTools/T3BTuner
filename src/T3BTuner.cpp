@@ -11,7 +11,8 @@
 
 #define TUNER_SERIAL_BAUDRATE 57600
 
-#define COMMAND_SIZE_INDEX 5
+#define HEADER_SIZE_INDEX 5
+
 #define COMMAND_START 0xFE
 #define COMMAND_EMPTY 0x00
 #define COMMAND_END 0xFD
@@ -91,8 +92,6 @@ T3BTuner::T3BTuner(Stream* serial, SerialType serialType, uint8_t resetPin, uint
 {
 }
 
-
-
 void T3BTuner::Init()
 {
   if (pinMute != UNUSED_PIN)
@@ -121,11 +120,6 @@ void T3BTuner::Init()
     delay(100);
   }
 }
-
-
-
-
-
 
 // *************************
 // ***** SYSTEM ************
@@ -365,7 +359,7 @@ bool T3BTuner::DabStationText(char* buffer, uint16_t size)
     }
 
     ResponseText(buffer, size);
-    bool changed = (strncmp(buffer, dabStationText, sizeof(dabStationText)) == 0);
+    bool changed = (strncmp(buffer, dabStationText, sizeof(dabStationText)) != 0);
     strncpy(dabStationText, buffer, sizeof(dabStationText));
     return changed;
   }
@@ -740,7 +734,7 @@ bool T3BTuner::ClockStatusGet(ClockStatus *status)
  */
 bool T3BTuner::EventEnable(bool enable)
 {
-  uint8_t value = (enable) ? 0x7F : 0x00;
+  uint16_t value = (enable) ? 0x7F : 0x00;
   CommandCreate(CMD_EVENTS, EVENTS_NOTIFY, value);
   return CommandSend();
 }
@@ -752,50 +746,12 @@ bool T3BTuner::EventReceived()
 
 /*
  *   Read event
- *   RETURN EVENT TYP: 1=scan finish, 2=got new DAB program text, 3=DAB reconfiguration, 4=DAB channel list order change, 5=RDS group, 6=Got new FM radio text, 7=Return the scanning frequency /FM/
  */
-int8_t T3BTuner::EventRead()
+bool T3BTuner::EventRead(EventType* type)
 {
-  uint8_t eventData[16];
-  uint8_t dabReturn[6];
-  uint8_t isPacketCompleted = 0;
-  uint16_t byteIndex = 0;
-  uint16_t dataIndex = 0;
-  uint8_t serialData = 0;
-  uint8_t eventDataSize = 128;
-  unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
-  while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (serial->available() > 0) {
-      serialData = serial->read();
-      if (serialData == 0xFE) {
-        byteIndex = 0;
-        dataIndex = 0;
-      }
-      if (eventDataSize && dataIndex < eventDataSize) {
-        eventData[dataIndex++] = serialData;
-      }
-      if (byteIndex <= 5) {
-        dabReturn[byteIndex] = serialData;
-      }
-      if (byteIndex == 5) {
-        eventDataSize = (((long)dabReturn[4] << 8) + (long)dabReturn[5]);
-      }
-      if ((int16_t)(byteIndex - eventDataSize) >= 5 && serialData == 0xFD) {
-        isPacketCompleted = 1;
-        break;
-      }
-      byteIndex++;
-    }
-  }
-  while (serial->available() > 0) {
-    serial->read();
-  }
-  if (isPacketCompleted == 1 && dabReturn[1] == 0x07) {
-    return dabReturn[2] + 1;
-  }
-  else {
-    return 0;
-  }
+  bool result = (ResponseReceive() && responseHeader[1] == CMD_EVENTS);
+  *type = (EventType)responseHeader[2];
+  return result;
 }
 
 // *************************
@@ -823,7 +779,7 @@ void T3BTuner::CommandStart(uint8_t type, uint8_t subType)
   command[3] = COMMAND_EMPTY;
   command[4] = COMMAND_EMPTY;
   command[5] = COMMAND_EMPTY;
-  commandSize = 6;
+  commandSize = HEADER_SIZE;
 }
 
 void T3BTuner::CommandAppend(uint8_t data)
@@ -831,8 +787,14 @@ void T3BTuner::CommandAppend(uint8_t data)
   // TODO Check if index is too big for data!
 
   command[commandSize] = data;
-  command[COMMAND_SIZE_INDEX] = command[COMMAND_SIZE_INDEX] + 1;
+  command[HEADER_SIZE_INDEX]++;
   commandSize++;
+}
+
+void T3BTuner::CommandAppend(uint16_t data)
+{
+  CommandAppend((uint8_t)((data >> 8) & 0xFF));
+  CommandAppend((uint8_t)((data >> 0) & 0xFF));
 }
 
 void T3BTuner::CommandAppend(uint32_t data)
@@ -855,6 +817,13 @@ void T3BTuner::CommandCreate(uint8_t type, uint8_t command)
 }
 
 void T3BTuner::CommandCreate(uint8_t type, uint8_t subType, uint8_t param)
+{
+  CommandStart(type, subType);
+  CommandAppend(param);
+  CommandEnd();
+}
+
+void T3BTuner::CommandCreate(uint8_t type, uint8_t subType, uint16_t param)
 {
   CommandStart(type, subType);
   CommandAppend(param);
@@ -889,46 +858,58 @@ void T3BTuner::CommandCreateName(uint8_t subType, uint32_t program, bool longNam
  */
 bool T3BTuner::CommandSend()
 {
-  uint8_t dabReturn[6];
-  uint8_t isPacketCompleted = 0;
-  uint16_t byteIndex = 0;
-  uint16_t dataIndex = 0;
-  uint8_t serialData = 0;
-  responseSize = 0;
-  while (serial->available() > 0) {
+  while (serial->available())
+  {
     serial->read();
   }
-  while (byteIndex < 255) {
-    if (command[byteIndex++] == 0xFD) break;
-  }
-  serial->write(command, byteIndex);
+  serial->write(command, commandSize);
   serial->flush();
-  byteIndex = 0;
-  unsigned long endMillis = millis() + 200; // timeout for answer from module = 200ms
-  while (millis() < endMillis && dataIndex < DAB_MAX_DATA_LENGTH) {
-    if (serial->available() > 0) {
-      serialData = serial->read();
-      if (serialData == 0xFE) {
-        byteIndex = 0;
-        dataIndex = 0;
+  return (ResponseReceive() && !(responseHeader[1] == 0x00 && responseHeader[2] == 0x02));
+}
+
+bool T3BTuner::ResponseReceive()
+{
+  uint16_t index = 0;
+  uint8_t data = 0;
+  uint32_t endMillis = millis() + 200; // timeout for answer from module = 200ms
+  responseSize = 0;
+
+  while (millis() < endMillis && index < DAB_MAX_DATA_LENGTH)
+  {
+    if (serial->available())
+    {
+      data = serial->read();
+      if (data == COMMAND_START)
+      {
+        index = 0;
       }
-      if (responseSize && dataIndex < responseSize) {
-        response[dataIndex++] = serialData;
+
+      if (index < HEADER_SIZE)
+      {
+        responseHeader[index] = data;
+
+        if (index == HEADER_SIZE_INDEX)
+        {
+          responseSize = (uint16_t)responseHeader[5];
+          responseSize |= (uint16_t)responseHeader[4] << 8;
+        }
       }
-      if (byteIndex <= 5) {
-        dabReturn[byteIndex] = serialData;
+      else if ((index - HEADER_SIZE) < responseSize)
+      {
+        response[index - HEADER_SIZE] = data;
       }
-      if (byteIndex == 5) {
-        responseSize = (((long)dabReturn[4] << 8) + (long)dabReturn[5]);
+
+      if (data == COMMAND_END)
+      {
+        if ((index - HEADER_SIZE - responseSize) == 0)
+        {
+          return true;
+        }
       }
-      if ((int16_t)(byteIndex - responseSize) >= 5 && serialData == 0xFD) {
-        isPacketCompleted = 1;
-        break;
-      }
-      byteIndex++;
+      index++;
     }
   }
-  return (isPacketCompleted == 1 && !(dabReturn[1] == 0x00 && dabReturn[2] == 0x02));
+  return false;
 }
 
 bool T3BTuner::ResponseText(char* buffer, uint16_t size)

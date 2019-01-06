@@ -12,6 +12,7 @@
 #include <stream.h>
 
 #define DAB_MAX_TEXT_LENGTH 128
+#define HEADER_SIZE 6
 #define UNUSED_PIN 255
 #define DAB_MAX_DATA_LENGTH 2 * DAB_MAX_TEXT_LENGTH
 
@@ -160,6 +161,17 @@ enum class ClockStatus : uint8_t
   Set
 };
 
+enum class EventType : uint8_t
+{
+  DabFinishedScan,
+  DabStationText,
+  DabReconfigured,
+  DabSorted,
+  FmRdsGroup,
+  FmStationText,
+  FmScanFrequency
+};
+
 class T3BTuner
 {
 public:
@@ -239,7 +251,7 @@ public:
   // *************************
   bool EventEnable(bool enable);
   bool EventReceived();
-  int8_t EventRead();
+  bool EventRead(EventType* type);
 
 private:
   // *************************
@@ -248,14 +260,17 @@ private:
   void SerialBegin(uint32_t baud);
   void CommandStart(uint8_t type, uint8_t command);
   void CommandAppend(uint8_t data);
+  void CommandAppend(uint16_t data);
   void CommandAppend(uint32_t data);
   void CommandEnd();
   void CommandCreate(uint8_t type, uint8_t subType);
   void CommandCreate(uint8_t type, uint8_t command, uint8_t param);
+  void CommandCreate(uint8_t type, uint8_t subType, uint16_t param);
   void CommandCreate(uint8_t type, uint8_t subType, uint32_t param);
   void CommandCreatePlay(uint8_t playType, uint32_t param);
   void CommandCreateName(uint8_t subType, uint32_t program, bool longName);
   bool CommandSend();
+  bool ResponseReceive();
   bool ResponseText(char* buffer, uint16_t size);
   bool ResponseUint8(uint8_t index, uint8_t * resp);
   bool ResponseUint16(uint8_t index, uint16_t * resp);
@@ -265,7 +280,8 @@ private:
   uint8_t command[COMMAND_MAX_SIZE];
   uint8_t commandSize = 0;
   uint8_t response[DAB_MAX_DATA_LENGTH];
-  uint32_t responseSize = 0;
+  uint8_t responseHeader[HEADER_SIZE];
+  uint16_t responseSize = 0;
   char dabStationText[DAB_MAX_TEXT_LENGTH];
 
   Stream * serial;
