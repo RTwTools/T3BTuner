@@ -17,20 +17,20 @@
 
 #define COMMAND_MAX_SIZE 20
 
-enum class StreamType
+enum class SerialType : uint8_t
 {
-  HardwareSerial,
-  SoftwareSerial
+  Hardware,
+  Software
 };
 
-enum class DabBand
+enum class DabBand : uint8_t
 {
-  Band3 = 0x01,
+  BandIII = 0x01,
   ChinaBand = 0x02,
   LBand = 0x03
 };
 
-enum class TunerState
+enum class TunerState : uint8_t
 {
   Playing,
   Searching,
@@ -40,7 +40,7 @@ enum class TunerState
   Reconfiguring
 };
 
-enum class TunerMode
+enum class TunerMode : uint8_t
 {
   Dab,
   Fm,
@@ -48,13 +48,13 @@ enum class TunerMode
   None
 };
 
-enum class StereoMode
+enum class StereoMode : uint8_t
 {
   Mono,
   Stereo
 };
 
-enum class StereoType
+enum class StereoType : uint8_t
 {
   Stereo,
   JoinStereo,
@@ -62,7 +62,7 @@ enum class StereoType
   SingleChannel
 };
 
-enum class StationType
+enum class StationType : uint8_t
 {
   NotAvailable,
   News,
@@ -98,14 +98,14 @@ enum class StationType
   Undefined2,
 };
 
-enum class SampleRate
+enum class SampleRate : uint8_t
 {
   Khz32 = 0x01, // TODO: 32 and 24 turned?
   Khz24,
   Khz48
 };
 
-enum class DabStreamType
+enum class DabStreamType : uint8_t
 {
   Dab,
   DabPlus,
@@ -113,20 +113,20 @@ enum class DabStreamType
   StreamData
 };
 
-enum class DabSortOrder
+enum class DabSortOrder : uint8_t
 {
   EnsembleId,
   ServiceName,
   ActiveInactive
 };
 
-enum class MemoryType
+enum class MemoryType : uint8_t
 {
   Dab,
   Fm
 };
 
-enum class MemoryId
+enum class MemoryId : uint8_t
 {
   Memory01,
   Memory02,
@@ -140,21 +140,21 @@ enum class MemoryId
   Memory10
 };
 
-enum class DabDrc
+enum class DabDrc : uint8_t
 {
   Off,
   Low,
   High
 };
 
-enum class FmExactStation
+enum class FmExactStation : uint8_t
 {
   NotExact,
   Exact,
   NoInformationYet = 0xFE
 };
 
-enum class ClockStatus
+enum class ClockStatus : uint8_t
 {
   Unset,
   Set
@@ -163,12 +163,9 @@ enum class ClockStatus
 class T3BTuner
 {
 public:
-  T3BTuner(Stream* stream, StreamType streamType, uint8_t resetPin,
-           uint8_t dacMutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
-  char charToAscii(uint8_t byte0, uint8_t byte1);
-  void init();
-  int8_t isEvent();
-  int8_t readEvent();
+  T3BTuner(Stream* serial, SerialType serialType, uint8_t resetPin,
+           uint8_t mutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
+  void Init();
   
   // *************************
   // ***** SYSTEM ************
@@ -185,7 +182,7 @@ public:
   bool PlayBeep();
   bool Stop();
   bool FmSearch(bool searchForward = true);
-  bool DabSearch(DabBand band = DabBand::Band3);
+  bool DabSearch(DabBand band = DabBand::BandIII);
   bool State(TunerState* status);
   bool Mode(TunerMode* mode);
   bool NowPlaying(uint32_t* programId);
@@ -196,16 +193,16 @@ public:
   bool VolumeSet(uint8_t volume);
   bool VolumeGet(uint8_t *volume);
   bool StationTypeGet(StationType *programType);
-  bool DabStationName(uint32_t stationId, char* name, bool longName = true);
-  bool DabStationText(char* text);
+  bool DabStationName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
+  bool DabStationText(char* buffer, uint16_t size);
   bool SampleRateGet(SampleRate *sampleRate);
   bool DabDataRate(uint16_t *data);
   bool DabSignalQuality(uint8_t *data);
   bool DabStationFrequency(uint32_t stationId, uint8_t* frequency);
-  bool DabStationEnsembleName(uint32_t stationId, char* name, bool longName = true);
+  bool DabStationEnsembleName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
   bool DabStationCount(uint32_t* count);
   bool DabStationOnAir(uint32_t stationId, bool* onAir);
-  bool DabStationServiceName(uint32_t stationId, char* name, bool longName = true);
+  bool DabStationServiceName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
   bool DabFoundStationsCount(uint8_t* count);
   bool DabStationType(uint32_t stationId, DabStreamType* type);
   bool MemorySet(MemoryType mode, MemoryId id, uint32_t programId);
@@ -231,44 +228,51 @@ public:
   // *************************
   // ***** RTC ***************
   // *************************
-
   bool ClockSet(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second);
   bool ClockGet(uint8_t* year, uint8_t* month, uint8_t* day, uint8_t* hour, uint8_t* minute, uint8_t* second);
-  bool ClockSyncStatusSet(bool enable);
-  bool ClockSyncStatusGet(bool *enabled);
+  bool ClockSyncSet(bool enable);
+  bool ClockSyncGet(bool *enabled);
   bool ClockStatusGet(ClockStatus *status);
 
   // *************************
-  // ***** NOTIFY ************
+  // ***** EVENTS ************
   // *************************
-
-  bool Notifications(bool enable);
+  bool EventEnable(bool enable);
+  bool EventReceived();
+  int8_t EventRead();
 
 private:
-  void commandAppend(uint8_t data);
-  void commandAppend(uint32_t data);
-  void commandStart(uint8_t type, uint8_t command);
-  void commandEnd();
-  void commandCreate(uint8_t type, uint8_t subType);
-  void commandCreate(uint8_t type, uint8_t command, uint8_t param);
-  void commandCreate(uint8_t type, uint8_t subType, uint32_t param);
-  void commandCreatePlay(uint8_t playType, uint32_t param);
-  void commandCreateName(uint8_t subType, uint32_t program, bool longName);
-  bool commandSend();
-
-  void streamBegin(uint32_t baud);
+  // *************************
+  // ***** PRIVATE FUNCTIONS *
+  // *************************
+  void SerialBegin(uint32_t baud);
+  void CommandStart(uint8_t type, uint8_t command);
+  void CommandAppend(uint8_t data);
+  void CommandAppend(uint32_t data);
+  void CommandEnd();
+  void CommandCreate(uint8_t type, uint8_t subType);
+  void CommandCreate(uint8_t type, uint8_t command, uint8_t param);
+  void CommandCreate(uint8_t type, uint8_t subType, uint32_t param);
+  void CommandCreatePlay(uint8_t playType, uint32_t param);
+  void CommandCreateName(uint8_t subType, uint32_t program, bool longName);
+  bool CommandSend();
+  bool ResponseText(char* buffer, uint16_t size);
+  bool ResponseUint8(uint8_t index, uint8_t * resp);
+  bool ResponseUint16(uint8_t index, uint16_t * resp);
+  bool ResponseUint32(uint8_t index, uint32_t * resp);
+  char Uint16ToChar(uint8_t byte0, uint8_t byte1);
 
   uint8_t command[COMMAND_MAX_SIZE];
   uint8_t commandSize = 0;
   uint8_t response[DAB_MAX_DATA_LENGTH];
   uint32_t responseSize = 0;
-  char dabProgramText[DAB_MAX_TEXT_LENGTH];
+  char dabStationText[DAB_MAX_TEXT_LENGTH];
 
-  Stream * stream;
-  StreamType streamType;
-  uint8_t resetPin;
-  uint8_t dacMutePin;
-  uint8_t spiCsPin;
+  Stream * serial;
+  SerialType serialType;
+  uint8_t pinReset;
+  uint8_t pinMute;
+  uint8_t pinSpiCs;
 };
 
 #endif
