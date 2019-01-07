@@ -9,37 +9,27 @@
 #include "T3BTuner.h"
 
 #define SERIAL_PORT Serial1
-#define RESET_PIN 7
-#define DAC_MUTE_PIN 9
-#define SPI_CS_PIN 10
+#define PIN_RESET 7
+#define PIN_MUTE 9
 
-T3BTuner tuner = T3BTuner(&SERIAL_PORT, StreamType::HardwareSerial, RESET_PIN, DAC_MUTE_PIN, SPI_CS_PIN);
+T3BTuner tuner = T3BTuner(&SERIAL_PORT, SerialType::Hardware, PIN_RESET, PIN_MUTE);
+char buffer[DAB_MAX_TEXT_LENGTH];
+uint32_t stationCount = 0;
+uint32_t stationId = 0;
 
-// DAB variables
-char dabText[DAB_MAX_TEXT_LENGTH];
-uint32_t programsIndex = 0;
-uint32_t programIndex = 0;
-
-void setup() {
-
+void setup()
+{
   Serial.begin(57600);
-
   Serial.println("DAB RESET & START");
-  tuner.init();
-  if (!tuner.Reset()) {
+  tuner.Init();
+
+  if (!tuner.Reset())
+  {
     Serial.println("DAB NOT READY");
     while (1) {}
   }
 
-  /*
-    if(!dab.resetCleanDB()) {
-    Serial.println("DAB NOT READY");
-    while (1) {}
-    }
-  */
-
   Serial.println("DAB READY");
-
   Serial.print("Search for DAB programs:");
   tuner.DabSearch();
 
@@ -49,7 +39,8 @@ void setup() {
   while (true)
   {
     tuner.State(&status);
-    if (status != lastStatus) {
+    if (status != lastStatus)
+    {
       Serial.println();
       switch (status)
       {
@@ -71,8 +62,6 @@ void setup() {
       case TunerState::Reconfiguring:
         Serial.print("Reconfiguring");
         break;
-      default:
-        break;
       }
     }
     if (status == TunerState::Playing || status == TunerState::Stopped) break;
@@ -82,67 +71,72 @@ void setup() {
   }
   Serial.println("");
 
-  tuner.NowPlaying(&programsIndex);
+  tuner.DabStationCount(&stationCount);
   Serial.println("Available programs: ");
-  for (uint32_t i = 0; i <= programsIndex; i++) {
-    if (tuner.DabStationName(i, dabText)) {
+  for (uint32_t i = 0; i <= stationCount; i++)
+  {
+    if (tuner.DabStationName(i, buffer, sizeof(buffer)))
+    {
       Serial.print(i);
       Serial.print("\t ");
-      Serial.println(dabText);
+      Serial.println(buffer);
     }
   }
   Serial.println();
 
-  if (tuner.AudioOutput()) { // 1st = spdiv (optical), 2st = cinch (analog)
+  if (tuner.AudioOutput())
+  {
     Serial.println("Set audio output");
   }
 
-  if (tuner.VolumeSet(8)) { // Set volume: 0..16
+  if (tuner.VolumeSet(8))
+  {
     Serial.println("Set volume");
   }
 
-  programIndex = 0;
+  stationId = 0;
 
-  if (tuner.Notifications(true)) {
+  if (tuner.EventEnable(true))
+  {
     Serial.println("Event notification enabled");
   }
 }
 
-void loop() {
+void loop()
+{
+  if (millis() % 20000 == 0)
+  {
+    stationId = (stationId < stationCount) ? stationId + 1 : 0;
 
-  if (millis() % 20000 == 0) {
-
-    if(programIndex < programsIndex) {
-      programIndex++;  
-    } else {
-      programIndex = 0;
-    }
-
-    if (tuner.PlayDab(programIndex)) {
-      if (tuner.DabStationName(programIndex, dabText)) {
+    if (tuner.PlayDab(stationId))
+    {
+      if (tuner.DabStationName(stationId, buffer, sizeof(buffer)))
+      {
         Serial.print("Tuned program: (");
-        Serial.print(programIndex);
+        Serial.print(stationId);
         Serial.print(") ");
-        Serial.println(dabText);
+        Serial.println(buffer);
       }
     }
   }
 
-  // EVENTS
-  // EVENT TYP: 1=scan finish, 2=got new DAB program text, 3=DAB reconfiguration, 4=DAB channel list order change, 5=RDS group, 6=Got new FM radio text, 7=Return the scanning frequency /FM/
-  if (tuner.isEvent()) {
-
-    switch (tuner.readEvent()) {
-      case 1:
+  if (tuner.EventReceived())
+  {
+    EventType eventType;
+    if (tuner.EventRead(&eventType))
+    {
+      if (eventType == EventType::DabFinishedScan)
+      {
         Serial.println("DAB program search finished.");
-        break;
-      case 2:
-        //do something when New DAB progam text
-        if (tuner.DabStationText(dabText)) { // new text
+      }
+      else if (eventType == EventType::DabStationText)
+      {
+        if (tuner.DabStationText(buffer, sizeof(buffer)))
+        {
           Serial.print("DAB text event: ");
-          Serial.println(dabText);
+          Serial.println(buffer);
         }
-        break;
+      }
     }
   }
 }
