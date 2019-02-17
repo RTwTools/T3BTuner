@@ -7,7 +7,6 @@
 
 #include "T3BTuner.h"
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 
 #define TUNER_SERIAL_BAUDRATE 57600
 
@@ -82,15 +81,12 @@
 
 #define EVENTS_NOTIFY 0x00
 
-
-T3BTuner::T3BTuner(Stream* serial, SerialType serialType, uint8_t resetPin, uint8_t mutePin, uint8_t spiCsPin) :
+T3BTuner::T3BTuner(ISerialStream* serial, uint8_t resetPin, uint8_t mutePin, uint8_t spiCsPin) :
   serial(serial),
-  serialType(serialType),
   pinReset(resetPin),
   pinMute(mutePin),
   pinSpiCs(spiCsPin)
-{
-}
+{ }
 
 void T3BTuner::Init()
 {
@@ -106,7 +102,7 @@ void T3BTuner::Init()
     digitalWrite(pinSpiCs, LOW);
   }
 
-  SerialBegin(TUNER_SERIAL_BAUDRATE);
+  serial->begin(TUNER_SERIAL_BAUDRATE);
   serial->setTimeout(50);
 
   pinMode(pinReset, OUTPUT);
@@ -757,19 +753,6 @@ bool T3BTuner::EventRead(EventType* type)
 // *************************
 // ***** PRIVATE FUNCTIONS *
 // *************************
-
-void T3BTuner::SerialBegin(uint32_t baud)
-{
-  switch (serialType)
-  {
-  case SerialType::Hardware:
-    static_cast<HardwareSerial*>(serial)->begin(baud);
-    break;
-  case SerialType::Software:
-    static_cast<SoftwareSerial*>(serial)->begin(baud);
-    break;
-  }
-}
 
 void T3BTuner::CommandStart(uint8_t type, uint8_t subType)
 {

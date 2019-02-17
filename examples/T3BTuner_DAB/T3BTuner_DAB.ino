@@ -5,14 +5,14 @@
   www.dabduino.com
 */
 
-#include <SoftwareSerial.h>
+#include "SerialStream.h"
 #include "T3BTuner.h"
 
-#define SERIAL_PORT Serial1
 #define PIN_RESET 7
 #define PIN_MUTE 9
 
-T3BTuner tuner = T3BTuner(&SERIAL_PORT, SerialType::Hardware, PIN_RESET, PIN_MUTE);
+ISerialStream * stream = new SerialStream(&Serial1);
+T3BTuner tuner = T3BTuner(stream, PIN_RESET, PIN_MUTE);
 char buffer[DAB_MAX_TEXT_LENGTH];
 uint32_t stationCount = 0;
 uint32_t stationId = 0;

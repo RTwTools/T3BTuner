@@ -9,7 +9,7 @@
 #define T3BTUNER_H
 
 #include <inttypes.h>
-#include <stream.h>
+#include "ISerialStream.h"
 
 #define DAB_MAX_TEXT_LENGTH 128
 #define HEADER_SIZE 6
@@ -17,12 +17,6 @@
 #define DAB_MAX_DATA_LENGTH 2 * DAB_MAX_TEXT_LENGTH
 
 #define COMMAND_MAX_SIZE 20
-
-enum class SerialType : uint8_t
-{
-  Hardware,
-  Software
-};
 
 enum class DabBand : uint8_t
 {
@@ -175,8 +169,8 @@ enum class EventType : uint8_t
 class T3BTuner
 {
 public:
-  T3BTuner(Stream* serial, SerialType serialType, uint8_t resetPin,
-           uint8_t mutePin = UNUSED_PIN, uint8_t spiCsPin = UNUSED_PIN);
+  T3BTuner(ISerialStream* serial, uint8_t resetPin, uint8_t mutePin = UNUSED_PIN,
+           uint8_t spiCsPin = UNUSED_PIN);
   void Init();
   
   // *************************
@@ -257,7 +251,6 @@ private:
   // *************************
   // ***** PRIVATE FUNCTIONS *
   // *************************
-  void SerialBegin(uint32_t baud);
   void CommandStart(uint8_t type, uint8_t command);
   void CommandAppend(uint8_t data);
   void CommandAppend(uint16_t data);
@@ -284,8 +277,7 @@ private:
   uint16_t responseSize = 0;
   char dabStationText[DAB_MAX_TEXT_LENGTH];
 
-  Stream * serial;
-  SerialType serialType;
+  ISerialStream * serial;
   uint8_t pinReset;
   uint8_t pinMute;
   uint8_t pinSpiCs;

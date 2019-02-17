@@ -21,9 +21,12 @@
     <Text Include="$(MSBuildThisFileDirectory)license.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\SerialStream.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\T3BTuner.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\ISerialStream.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\SerialStream.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\T3BTuner.h" />
   </ItemGroup>
   <ItemGroup>
