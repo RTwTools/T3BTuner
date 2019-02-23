@@ -8,10 +8,13 @@
 #include "SerialStream.h"
 #include "T3BTuner.h"
 
-#define PIN_RESET 7
-#define PIN_MUTE 9
+#define SERIAL_TX 8
+#define SERIAL_RX 9
+#define PIN_RESET 3
+#define PIN_MUTE 2
 
-ISerialStream * stream = new SerialStream(&Serial1);
+SoftwareSerial * serial = new SoftwareSerial(SERIAL_RX, SERIAL_TX);
+ISerialStream * stream = new SerialStream(serial);
 T3BTuner tuner = T3BTuner(stream, PIN_RESET, PIN_MUTE);
 char buffer[DAB_MAX_TEXT_LENGTH];
 uint32_t stationCount = 0;
@@ -125,9 +128,9 @@ void loop()
     EventType eventType;
     if (tuner.EventRead(&eventType))
     {
-      if (eventType == EventType::DabFinishedScan)
+      if (eventType == EventType::FinishedScan)
       {
-        Serial.println("DAB program search finished.");
+        Serial.println("Program search finished.");
       }
       else if (eventType == EventType::DabStationText)
       {

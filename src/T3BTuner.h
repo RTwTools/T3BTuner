@@ -37,10 +37,11 @@ enum class TunerState : uint8_t
 
 enum class TunerMode : uint8_t
 {
-  Dab,
-  Fm,
-  Beep,
-  None
+  Dab = 0x00,
+  Fm = 0x01,
+  Beep = 0x03,
+  Am = 0x04,
+  None = 0xFF
 };
 
 enum class StereoMode : uint8_t
@@ -52,7 +53,7 @@ enum class StereoMode : uint8_t
 enum class StereoType : uint8_t
 {
   Stereo,
-  JoinStereo,
+  JointStereo,
   DualChannel,
   SingleChannel
 };
@@ -95,7 +96,7 @@ enum class StationType : uint8_t
 
 enum class SampleRate : uint8_t
 {
-  Khz32 = 0x01, // TODO: 32 and 24 turned?
+  Khz32 = 0x01,
   Khz24,
   Khz48
 };
@@ -157,13 +158,13 @@ enum class ClockStatus : uint8_t
 
 enum class EventType : uint8_t
 {
-  DabFinishedScan,
+  FinishedScan,
   DabStationText,
   DabReconfigured,
   DabSorted,
   FmRdsGroup,
   FmStationText,
-  FmScanFrequency
+  ScanFrequency
 };
 
 class T3BTuner
@@ -178,7 +179,7 @@ public:
   // *************************
   bool Ready();
   bool Reset(bool fullReset = false);
-  bool AudioOutput(bool spdiv = true, bool cinch = true);
+  bool AudioOutput(bool spdif = true, bool cinch = true);
 
   // *************************
   // ***** STREAM ************
@@ -202,13 +203,13 @@ public:
   bool DabStationName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
   bool DabStationText(char* buffer, uint16_t size);
   bool SampleRateGet(SampleRate *sampleRate);
-  bool DabDataRate(uint16_t *data);
-  bool DabSignalQuality(uint8_t *data);
+  bool DabDataRate(uint16_t *dataRate);
+  bool DabSignalQuality(uint8_t *signalQuality);
   bool DabStationFrequency(uint32_t stationId, uint8_t* frequency);
-  bool DabStationEnsembleName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
+  bool DabStationEnsembleName(uint32_t stationId, char* buffer, uint16_t size);
   bool DabStationCount(uint32_t* count);
   bool DabStationOnAir(uint32_t stationId, bool* onAir);
-  bool DabStationServiceName(uint32_t stationId, char* buffer, uint16_t size, bool longName = true);
+  bool DabStationServiceName(uint32_t stationId, char* buffer, uint16_t size);
   bool DabFoundStationsCount(uint8_t* count);
   bool DabStationType(uint32_t stationId, DabStreamType* type);
   bool MemorySet(MemoryType mode, MemoryId id, uint32_t programId);
@@ -251,17 +252,17 @@ private:
   // *************************
   // ***** PRIVATE FUNCTIONS *
   // *************************
-  void CommandStart(uint8_t type, uint8_t command);
+  void CommandStart(uint8_t type, uint8_t id);
   void CommandAppend(uint8_t data);
   void CommandAppend(uint16_t data);
   void CommandAppend(uint32_t data);
   void CommandEnd();
-  void CommandCreate(uint8_t type, uint8_t subType);
-  void CommandCreate(uint8_t type, uint8_t command, uint8_t param);
-  void CommandCreate(uint8_t type, uint8_t subType, uint16_t param);
-  void CommandCreate(uint8_t type, uint8_t subType, uint32_t param);
+  void CommandCreate(uint8_t type, uint8_t id);
+  void CommandCreate(uint8_t type, uint8_t id, uint8_t param);
+  void CommandCreate(uint8_t type, uint8_t id, uint16_t param);
+  void CommandCreate(uint8_t type, uint8_t id, uint32_t param);
   void CommandCreatePlay(uint8_t playType, uint32_t param);
-  void CommandCreateName(uint8_t subType, uint32_t program, bool longName);
+  void CommandCreateName(uint8_t id, uint32_t program, bool longName);
   bool CommandSend();
   bool ResponseReceive();
   bool ResponseText(char* buffer, uint16_t size);

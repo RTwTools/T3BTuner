@@ -26,12 +26,10 @@
 #define SYSTEM_AUDIO_OUTPUT 0x06
 
 #define STREAM_PLAY 0x00
-#define STREAM_PLAY_DAB 0x00
-#define STREAM_PLAY_FM 0x01
-#define STREAM_PLAY_BEEP 0x02
 #define STREAM_STOP 0x01
 #define STREAM_FM_SEARCH 0x02
 #define STREAM_DAB_SEARCH 0x03
+#define STREAM_STOP_SEARCH 0x04
 #define STREAM_STATUS 0x05
 #define STREAM_MODE 0x06
 #define STREAM_NOW_PLAYING 0x07
@@ -81,6 +79,9 @@
 
 #define EVENTS_NOTIFY 0x00
 
+#define RSPNS_ACK 0x00
+#define ACK_NAK 0x02
+
 T3BTuner::T3BTuner(ISerialStream* serial, uint8_t resetPin, uint8_t mutePin, uint8_t spiCsPin) :
   serial(serial),
   pinReset(resetPin),
@@ -113,7 +114,7 @@ void T3BTuner::Init()
 
   while (!Ready())
   {
-    delay(100);
+    delay(500);
   }
 }
 
@@ -146,12 +147,12 @@ bool T3BTuner::Reset(bool fullReset)
 }
 
 /*
- *   Set audio output channels (SPDIV, CINCH /I2S DAC/)
- *   CINCH for analog output, SPDIV for optical digital output
+ *   Set audio output channels (SPDIF, CINCH /I2S DAC/)
+ *   CINCH for analog output, SPDIF for optical digital output
  */
-bool T3BTuner::AudioOutput(bool spdiv, bool cinch)
+bool T3BTuner::AudioOutput(bool spdif, bool cinch)
 {
-  uint8_t param = (uint8_t)spdiv | ((uint8_t)cinch << 0x1);
+  uint8_t param = (uint8_t)spdif | ((uint8_t)cinch << 0x1);
   CommandCreate(CMD_SYSTEM, SYSTEM_AUDIO_OUTPUT, param);
   return CommandSend();
 }
@@ -166,7 +167,7 @@ bool T3BTuner::AudioOutput(bool spdiv, bool cinch)
  */
 bool T3BTuner::PlayDab(uint32_t stationId)
 {
-  CommandCreatePlay(STREAM_PLAY_DAB, stationId);
+  CommandCreatePlay((uint8_t)TunerMode::Dab, stationId);
   return CommandSend();
 }
 
@@ -176,7 +177,7 @@ bool T3BTuner::PlayDab(uint32_t stationId)
  */
 bool T3BTuner::PlayFm(uint32_t frequency)
 {
-  CommandCreatePlay(STREAM_PLAY_FM, frequency);
+  CommandCreatePlay((uint8_t)TunerMode::Fm, frequency);
   return CommandSend();
 }
 
@@ -185,7 +186,7 @@ bool T3BTuner::PlayFm(uint32_t frequency)
  */
 bool T3BTuner::PlayBeep()
 {
-  CommandCreatePlay(STREAM_PLAY_BEEP, 0x00);
+  CommandCreatePlay((uint8_t)TunerMode::Beep, 0x00);
   return CommandSend();
 }
 
@@ -389,10 +390,10 @@ bool T3BTuner::DabDataRate(uint16_t* dataRate)
  *   20..30 = the noise (short break) appears
  *   100 = the bit error rate is 0
  */
-bool T3BTuner::DabSignalQuality(uint8_t* data)
+bool T3BTuner::DabSignalQuality(uint8_t* signalQuality)
 {
   CommandCreate(CMD_STREAM, STREAM_DAB_SIGNAL_QUALITY);
-  return (CommandSend() && ResponseUint8(0, data));
+  return (CommandSend() && ResponseUint8(0, signalQuality));
 }
 
 /*
@@ -411,9 +412,9 @@ bool T3BTuner::DabStationFrequency(uint32_t stationId, uint8_t* frequency)
 /*
  * Get DAB program ensemble name.
  */
-bool T3BTuner::DabStationEnsembleName(uint32_t stationId, char* buffer, uint16_t size, bool longName)
+bool T3BTuner::DabStationEnsembleName(uint32_t stationId, char* buffer, uint16_t size)
 {
-  CommandCreateName(STREAM_DAB_ENSEMBLE_NAME, stationId, longName);
+  CommandCreateName(STREAM_DAB_ENSEMBLE_NAME, stationId, false);
   return (CommandSend() && ResponseText(buffer, size));
 }
 
@@ -441,9 +442,9 @@ bool T3BTuner::DabStationOnAir(uint32_t stationId, bool* onAir)
 /*
  * Get DAB program service short name.
  */
-bool T3BTuner::DabStationServiceName(uint32_t stationId, char* buffer, uint16_t size, bool longName)
+bool T3BTuner::DabStationServiceName(uint32_t stationId, char* buffer, uint16_t size)
 {
-  CommandCreateName(STREAM_DAB_STATION_SERVICE_NAME, stationId, longName);
+  CommandCreateName(STREAM_DAB_STATION_SERVICE_NAME, stationId, false);
   return (CommandSend() && ResponseText(buffer, size));
 }
 
@@ -754,11 +755,11 @@ bool T3BTuner::EventRead(EventType* type)
 // ***** PRIVATE FUNCTIONS *
 // *************************
 
-void T3BTuner::CommandStart(uint8_t type, uint8_t subType)
+void T3BTuner::CommandStart(uint8_t type, uint8_t id)
 {
   command[0] = COMMAND_START;
   command[1] = type;
-  command[2] = subType;
+  command[2] = id;
   command[3] = COMMAND_EMPTY;
   command[4] = COMMAND_EMPTY;
   command[5] = COMMAND_EMPTY;
@@ -793,29 +794,29 @@ void T3BTuner::CommandEnd()
   command[commandSize++] = COMMAND_END;
 }
 
-void T3BTuner::CommandCreate(uint8_t type, uint8_t command)
+void T3BTuner::CommandCreate(uint8_t type, uint8_t id)
 {
-  CommandStart(type, command);
+  CommandStart(type, id);
   CommandEnd();
 }
 
-void T3BTuner::CommandCreate(uint8_t type, uint8_t subType, uint8_t param)
+void T3BTuner::CommandCreate(uint8_t type, uint8_t id, uint8_t param)
 {
-  CommandStart(type, subType);
+  CommandStart(type, id);
   CommandAppend(param);
   CommandEnd();
 }
 
-void T3BTuner::CommandCreate(uint8_t type, uint8_t subType, uint16_t param)
+void T3BTuner::CommandCreate(uint8_t type, uint8_t id, uint16_t param)
 {
-  CommandStart(type, subType);
+  CommandStart(type, id);
   CommandAppend(param);
   CommandEnd();
 }
 
-void T3BTuner::CommandCreate(uint8_t type, uint8_t subType, uint32_t param)
+void T3BTuner::CommandCreate(uint8_t type, uint8_t id, uint32_t param)
 {
-  CommandStart(type, subType);
+  CommandStart(type, id);
   CommandAppend(param);
   CommandEnd();
 }
@@ -828,9 +829,9 @@ void T3BTuner::CommandCreatePlay(uint8_t playType, uint32_t param)
   CommandEnd();
 }
 
-void T3BTuner::CommandCreateName(uint8_t subType, uint32_t program, bool longName)
+void T3BTuner::CommandCreateName(uint8_t id, uint32_t program, bool longName)
 {
-  CommandStart(CMD_STREAM, subType);
+  CommandStart(CMD_STREAM, id);
   CommandAppend(program);
   CommandAppend((uint8_t)longName);
   CommandEnd();
@@ -847,7 +848,7 @@ bool T3BTuner::CommandSend()
   }
   serial->write(command, commandSize);
   serial->flush();
-  return (ResponseReceive() && !(responseHeader[1] == 0x00 && responseHeader[2] == 0x02));
+  return (ResponseReceive() && !(responseHeader[1] == RSPNS_ACK && responseHeader[2] == ACK_NAK));
 }
 
 bool T3BTuner::ResponseReceive()
