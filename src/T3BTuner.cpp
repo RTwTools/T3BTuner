@@ -6,6 +6,7 @@
  */
 
 #include "T3BTuner.h"
+#include "Gpio.h"
 #include <Arduino.h>
 
 #define TUNER_SERIAL_BAUDRATE 57600
@@ -93,23 +94,23 @@ void T3BTuner::Init()
 {
   if (pinMute != UNUSED_PIN)
   {
-    pinMode(pinMute, OUTPUT);
-    digitalWrite(pinMute, HIGH);
+    GpioModeSet(pinMute, GpioMode::Output);
+    GpioWrite(pinMute, GpioState::High);
   }
 
   if (pinSpiCs != UNUSED_PIN)
   {
-    pinMode(pinSpiCs, OUTPUT);
-    digitalWrite(pinSpiCs, LOW);
+    GpioModeSet(pinSpiCs, GpioMode::Output);
+    GpioWrite(pinSpiCs, GpioState::Low);
   }
 
   serial->begin(TUNER_SERIAL_BAUDRATE);
   serial->setTimeout(50);
 
-  pinMode(pinReset, OUTPUT);
-  digitalWrite(pinReset, LOW);
+  GpioModeSet(pinReset, GpioMode::Output);
+  GpioWrite(pinReset, GpioState::Low);
   delay(100);
-  digitalWrite(pinReset, HIGH);
+  GpioWrite(pinReset, GpioState::High);
   delay(1000);
 
   while (!Ready())
