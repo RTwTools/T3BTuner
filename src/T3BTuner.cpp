@@ -5,9 +5,10 @@
  *  @license  BSD (see license.txt)
  */
 
+#include <string.h>
 #include "T3BTuner.h"
 #include "Gpio.h"
-#include <Arduino.h>
+#include "SystemAdapt.h"
 
 #define TUNER_SERIAL_BAUDRATE 57600
 
@@ -109,13 +110,13 @@ void T3BTuner::Init()
 
   GpioModeSet(pinReset, GpioMode::Output);
   GpioWrite(pinReset, GpioState::Low);
-  delay(100);
+  SystemDelay(100);
   GpioWrite(pinReset, GpioState::High);
-  delay(1000);
+  SystemDelay(1000);
 
   while (!Ready())
   {
-    delay(500);
+    SystemDelay(500);
   }
 }
 
@@ -856,10 +857,10 @@ bool T3BTuner::ResponseReceive()
 {
   uint16_t index = 0;
   uint8_t data = 0;
-  uint32_t endMillis = millis() + 200; // timeout for answer from module = 200ms
+  uint32_t endMillis = SystemMillis() + 200; // timeout for answer from module = 200ms
   responseSize = 0;
 
-  while (millis() < endMillis && index < DAB_MAX_DATA_LENGTH)
+  while (SystemMillis() < endMillis && index < DAB_MAX_DATA_LENGTH)
   {
     if (serial->available())
     {
