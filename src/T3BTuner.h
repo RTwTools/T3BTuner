@@ -1,14 +1,8 @@
-/*
- * DABDUINO.h - Library for DABDUINO - DAB/DAB+ digital radio shield for Arduino.
- * Created by Tomas Urbanek, Montyho technology Ltd., Januar 2, 2017.
- * www.dabduino.com
- * @license  BSD (see license.txt)
- */
-
 #ifndef T3BTUNER_H
 #define T3BTUNER_H
 
 #include <inttypes.h>
+#include "Command.h"
 #include "ISerialStream.h"
 
 #define DAB_MAX_TEXT_LENGTH 128
@@ -222,14 +216,14 @@ public:
   bool DabRemoveOffAir(uint16_t* removedTotal, uint16_t* removedIndex);
   bool DabExtendedCountryCode(uint8_t* ecc, uint8_t* countryId);
   bool FmRdsPiCode(uint16_t* code);
-  bool FmStereoTresholdLevelSet(uint8_t level);
-  bool FmStereoTresholdLevelGet(uint8_t* level);
+  bool FmStereoThresholdLevelSet(uint8_t level);
+  bool FmStereoThresholdLevelGet(uint8_t* level);
   bool FmRdsRawData(uint16_t* blockA, uint16_t* blockB, uint16_t* blockC, uint16_t* blockD,
                     uint16_t* blerA, uint16_t* blerB, uint16_t* blerC, uint16_t* blerD);
-  bool FmSeekTresholdSet(uint8_t treshold);
-  bool FmSeekTresholdGet(uint8_t* treshold);
-  bool FmStereoTresholdSet(uint8_t treshold);
-  bool FmStereoTresholdGet(uint8_t* data);
+  bool FmSeekThresholdSet(uint8_t threshold);
+  bool FmSeekThresholdGet(uint8_t* threshold);
+  bool FmStereoThresholdSet(uint8_t threshold);
+  bool FmStereoThresholdGet(uint8_t* threshold);
   bool FmExactStationGet(FmExactStation* exactStation);
 
   // *************************
@@ -252,17 +246,12 @@ private:
   // *************************
   // ***** PRIVATE FUNCTIONS *
   // *************************
-  void CommandStart(uint8_t type, uint8_t id);
-  void CommandAppend(uint8_t data);
-  void CommandAppend(uint16_t data);
-  void CommandAppend(uint32_t data);
-  void CommandEnd();
-  void CommandCreate(uint8_t type, uint8_t id);
-  void CommandCreate(uint8_t type, uint8_t id, uint8_t param);
-  void CommandCreate(uint8_t type, uint8_t id, uint16_t param);
-  void CommandCreate(uint8_t type, uint8_t id, uint32_t param);
+  void CommandCreate(CommandType type, CommandId id);
+  void CommandCreate(CommandType type, CommandId id, uint8_t param);
+  void CommandCreate(CommandType type, CommandId id, uint16_t param);
+  void CommandCreate(CommandType type, CommandId id, uint32_t param);
   void CommandCreatePlay(uint8_t playType, uint32_t param);
-  void CommandCreateName(uint8_t id, uint32_t program, bool longName);
+  void CommandCreateName(CommandId id, uint32_t program, bool longName);
   bool CommandSend();
   bool ResponseReceive();
   bool ResponseText(char* buffer, uint16_t size);
@@ -271,8 +260,7 @@ private:
   bool ResponseUint32(uint8_t index, uint32_t * resp);
   char Uint16ToChar(uint8_t byte0, uint8_t byte1);
 
-  uint8_t command[COMMAND_MAX_SIZE];
-  uint8_t commandSize = 0;
+  Command command;
   uint8_t response[DAB_MAX_DATA_LENGTH];
   uint8_t responseHeader[HEADER_SIZE];
   uint16_t responseSize = 0;
