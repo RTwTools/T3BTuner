@@ -739,7 +739,7 @@ bool T3BTuner::CommandSend()
   {
     serial->read();
   }
-  serial->write(command.data, command.size);
+  serial->write(command.GetData(), command.GetSize());
   serial->flush();
   return (ResponseReceive() && !(responseHeader[1] == RSPNS_ACK && responseHeader[2] == ACK_NAK));
 }

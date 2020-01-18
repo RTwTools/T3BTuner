@@ -1,46 +1,79 @@
+#include <string.h>
 #include "Command.h"
 
-#define LENGTH_ID 5
-#define HEADER_SIZE 6
-#define VALUE_START 0xFE
-#define VALUE_EMPTY 0x00
-#define VALUE_END 0xFD
+#define COMMAND_ID_START 0
+#define COMMAND_ID_TYPE 1
+#define COMMAND_ID_ID 2
+#define COMMAND_ID_SIZE 5
+
+#define COMMAND_VALUE_START 0xFE
+#define COMMAND_VALUE_END 0xFD
+#define COMMAND_VALUE_INIT_SIZE 6
+
+const uint8_t* Command::GetData()
+{
+  return data;
+}
+
+uint8_t Command::GetSize()
+{
+  return size;
+}
 
 void Command::Start(CommandType type, CommandId id)
 {
-  data[0] = VALUE_START;
-  data[1] = (uint8_t)type;
-  data[2] = (uint8_t)id;
-  data[3] = VALUE_EMPTY;
-  data[4] = VALUE_EMPTY;
-  data[5] = VALUE_EMPTY;
-  size = HEADER_SIZE;
+  memset(data, '\0', sizeof(data));
+
+  data[COMMAND_ID_START] = COMMAND_VALUE_START;
+  data[COMMAND_ID_TYPE] = (uint8_t)type;
+  data[COMMAND_ID_ID] = (uint8_t)id;
+
+  size = COMMAND_VALUE_INIT_SIZE;
 }
 
-void Command::Append(uint8_t param)
+bool Command::Append(uint8_t value)
 {
-  // TODO Check if index is too big for data!
+  bool result = ((size + 1) < COMMAND_MAX_SIZE);
 
-  data[size] = param;
-  data[LENGTH_ID]++;
-  size++;
+  if (result)
+  {
+    data[size++] = value;
+    data[COMMAND_ID_SIZE]++;
+  }
+  
+  return result;
 }
 
-void Command::Append(uint16_t param)
+bool Command::Append(uint16_t value)
 {
-  Append((uint8_t)((param >> 8) & 0xFF));
-  Append((uint8_t)((param >> 0) & 0xFF));
+  bool result = true;
+
+  result |= Append((uint8_t)((value >> 8) & 0xFF));
+  result |= Append((uint8_t)((value >> 0) & 0xFF));
+
+  return result;
 }
 
-void Command::Append(uint32_t param)
+bool Command::Append(uint32_t value)
 {
-  Append((uint8_t)((param >> 24) & 0xFF));
-  Append((uint8_t)((param >> 16) & 0xFF));
-  Append((uint8_t)((param >> 8) & 0xFF));
-  Append((uint8_t)((param >> 0) & 0xFF));
+  bool result = true;
+
+  result |= Append((uint8_t)((value >> 24) & 0xFF));
+  result |= Append((uint8_t)((value >> 16) & 0xFF));
+  result |= Append((uint8_t)((value >> 8) & 0xFF));
+  result |= Append((uint8_t)((value >> 0) & 0xFF));
+  
+  return result;
 }
 
-void Command::End()
+bool Command::End()
 {
-  data[size++] = VALUE_END;
+  bool result = (size < COMMAND_MAX_SIZE);
+
+  if (result)
+  {
+    data[size++] = COMMAND_VALUE_END;
+  }
+  
+  return result;
 }

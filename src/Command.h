@@ -77,12 +77,15 @@ enum class CommandId : uint8_t
 class Command
 {
 public:
+  const uint8_t* GetData();
+  uint8_t GetSize();
   void Start(CommandType type, CommandId id);
-  void Append(uint8_t param);
-  void Append(uint16_t param);
-  void Append(uint32_t param);
-  void End();
+  bool Append(uint8_t value);
+  bool Append(uint16_t value);
+  bool Append(uint32_t value);
+  bool End();
 
+private:
   uint8_t data[COMMAND_MAX_SIZE];
   uint8_t size = 0;
 };
