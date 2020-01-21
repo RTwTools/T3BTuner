@@ -2,7 +2,7 @@
 #define T3BTUNER_H
 
 #include <inttypes.h>
-#include "Command.h"
+#include "CommandBuilder.h"
 #include "ISerialStream.h"
 
 #define DAB_MAX_TEXT_LENGTH 128
@@ -246,13 +246,7 @@ private:
   // *************************
   // ***** PRIVATE FUNCTIONS *
   // *************************
-  void CommandCreate(CommandType type, CommandId id);
-  void CommandCreate(CommandType type, CommandId id, uint8_t param);
-  void CommandCreate(CommandType type, CommandId id, uint16_t param);
-  void CommandCreate(CommandType type, CommandId id, uint32_t param);
-  void CommandCreatePlay(uint8_t playType, uint32_t param);
-  void CommandCreateName(CommandId id, uint32_t program, bool longName);
-  bool CommandSend();
+  bool CommandSend(Command& command);
   bool ResponseReceive();
   bool ResponseText(char* buffer, uint16_t size);
   bool ResponseUint8(uint8_t index, uint8_t * resp);
@@ -260,7 +254,7 @@ private:
   bool ResponseUint32(uint8_t index, uint32_t * resp);
   char Uint16ToChar(uint8_t byte0, uint8_t byte1);
 
-  Command command;
+  CommandBuilder commandBuilder;
   uint8_t response[DAB_MAX_DATA_LENGTH];
   uint8_t responseHeader[HEADER_SIZE];
   uint16_t responseSize = 0;
