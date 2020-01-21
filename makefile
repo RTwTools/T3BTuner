@@ -4,10 +4,10 @@ LINKER = -lgtest_main
 TARGETS = tests
 
 APPDIR = src
-APPSOURCES = $(APPDIR)/command.cpp
+APPSOURCES = $(APPDIR)/CommandBuilder.cpp
 
 TESTDIR = tests
-TESTSOURCES = $(TESTDIR)/CommandTests.cpp
+TESTSOURCES = $(TESTDIR)/CommandBuilderTests.cpp
 
 INCDIR = -I $(APPDIR) -I $(TESTDIR)
 
