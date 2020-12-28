@@ -1,83 +1,80 @@
-#include <string.h>
 #include "CommandBuilder.h"
+#include <string.h>
 
-#define COMMAND_ID_START 0
-#define COMMAND_ID_TYPE 1
-#define COMMAND_ID_ID 2
-#define COMMAND_ID_SIZE 5
+static const uint8_t CommandStartId = 0U;
+static const uint8_t CommandTypeId = 1U;
+static const uint8_t CommandIdentifierId = 2U;
+static const uint8_t CommandSizeId = 5U;
+static const uint8_t CommandInitSize = 6U;
 
-#define COMMAND_VALUE_START 0xFE
-#define COMMAND_VALUE_END 0xFD
-#define COMMAND_VALUE_INIT_SIZE 6
-
-CommandBuilder& CommandBuilder::Create(CommandType type, uint8_t id)
+CommandBuilder& CommandBuilder::Create(CommandType const type, uint8_t const id)
 {
-  memset(command.data, '\0', sizeof(command.data));
+    memset(command.data, 0U, sizeof(command.data));
 
-  command.data[COMMAND_ID_START] = COMMAND_VALUE_START;
-  command.data[COMMAND_ID_TYPE] = (uint8_t)type;
-  command.data[COMMAND_ID_ID] = id;
+    command.data[CommandStartId] = CommandStartValue;
+    command.data[CommandTypeId] = static_cast<uint8_t>(type);
+    command.data[CommandIdentifierId] = id;
 
-  command.size = COMMAND_VALUE_INIT_SIZE;
+    command.size = CommandInitSize;
 
-  return *this;
+    return *this;
 }
 
-CommandBuilder& CommandBuilder::CreateSystem(CmdSystemId id)
+CommandBuilder& CommandBuilder::CreateSystem(CmdSystemId const id)
 {
-  return Create(CommandType::System, (uint8_t)id);
+    return Create(CommandType::System, static_cast<uint8_t>(id));
 }
 
-CommandBuilder& CommandBuilder::CreateStream(CmdStreamId id)
+CommandBuilder& CommandBuilder::CreateStream(CmdStreamId const id)
 {
-  return Create(CommandType::Stream, (uint8_t)id);
+    return Create(CommandType::Stream, static_cast<uint8_t>(id));
 }
 
-CommandBuilder& CommandBuilder::CreateRtc(CmdRtcId id)
+CommandBuilder& CommandBuilder::CreateRtc(CmdRtcId const id)
 {
-  return Create(CommandType::Rtc, (uint8_t)id);
+    return Create(CommandType::Rtc, static_cast<uint8_t>(id));
 }
 
-CommandBuilder& CommandBuilder::CreateNotification(CmdNotificationId id)
+CommandBuilder& CommandBuilder::CreateNotification(CmdNotificationId const id)
 {
-  return Create(CommandType::Notification, (uint8_t)id);
+    return Create(CommandType::Notification, static_cast<uint8_t>(id));
 }
 
-CommandBuilder& CommandBuilder::Append(uint8_t value)
+CommandBuilder& CommandBuilder::Append(uint8_t const value)
 {
-  if ((command.size + 1) < COMMAND_MAX_SIZE)
-  {
-    command.data[command.size++] = value;
-    command.data[COMMAND_ID_SIZE]++;
-  }
-  
-  return *this;
+    if ((command.size + 1) < CommandMaxSize)
+    {
+        command.data[command.size++] = value;
+        command.data[CommandSizeId]++;
+    }
+
+    return *this;
 }
 
-CommandBuilder& CommandBuilder::Append(uint16_t value)
+CommandBuilder& CommandBuilder::Append(uint16_t const value)
 {
-  Append((uint8_t)((value >> 8) & 0xFF));
-  Append((uint8_t)((value >> 0) & 0xFF));
+    Append(static_cast<uint8_t>(((value >> 8U) & 0xFF)));
+    Append(static_cast<uint8_t>(((value >> 0U) & 0xFF)));
 
-  return *this;
+    return *this;
 }
 
-CommandBuilder& CommandBuilder::Append(uint32_t value)
+CommandBuilder& CommandBuilder::Append(uint32_t const value)
 {
-  Append((uint8_t)((value >> 24) & 0xFF));
-  Append((uint8_t)((value >> 16) & 0xFF));
-  Append((uint8_t)((value >> 8) & 0xFF));
-  Append((uint8_t)((value >> 0) & 0xFF));
-  
-  return *this;
+    Append(static_cast<uint8_t>(((value >> 24U) & 0xFF)));
+    Append(static_cast<uint8_t>(((value >> 16U) & 0xFF)));
+    Append(static_cast<uint8_t>(((value >> 8U) & 0xFF)));
+    Append(static_cast<uint8_t>(((value >> 0U) & 0xFF)));
+
+    return *this;
 }
 
 Command& CommandBuilder::Build()
 {
-  if (command.size < COMMAND_MAX_SIZE)
-  {
-    command.data[command.size++] = COMMAND_VALUE_END;
-  }
-  
-  return command;
+    if (command.size < CommandMaxSize)
+    {
+        command.data[command.size++] = CommandEndValue;
+    }
+
+    return command;
 }

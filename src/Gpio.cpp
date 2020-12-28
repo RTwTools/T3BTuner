@@ -1,7 +1,7 @@
 #include "Gpio.h"
 #include <Arduino.h>
 
-void GpioModeSet(uint8_t pin, GpioMode mode)
+void GpioModeSet(uint8_t const pin, GpioMode const mode)
 {
   if (mode == GpioMode::Input)
   {
@@ -13,14 +13,14 @@ void GpioModeSet(uint8_t pin, GpioMode mode)
   }
 }
 
-GpioState GpioRead(uint8_t pin)
+GpioState GpioRead(uint8_t const pin)
 {
   return (digitalRead(pin) == HIGH)
    ? GpioState::High
    : GpioState::Low;
 }
 
-void GpioWrite(uint8_t pin, GpioState value)
+void GpioWrite(uint8_t const pin, GpioState const value)
 {
   if (value == GpioState::High)
   {

@@ -1,9 +1,9 @@
-#ifndef SYSTEM_ADAPT_H
-#define SYSTEM_ADAPT_H
+#ifndef SystemAdapt_h
+#define SystemAdapt_h
 
 #include <stdint.h>
 
-void SystemDelay(uint32_t milliSeconds);
+void SystemDelay(uint32_t const milliSeconds);
 uint32_t SystemMillis();
 
-#endif
+#endif // SystemAdapt_h

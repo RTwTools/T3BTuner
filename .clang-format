@@ -1,0 +1,29 @@
+BasedOnStyle: llvm
+AlwaysBreakAfterReturnType: None
+AccessModifierOffset: -2
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: true
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    AfterUnion: true
+    BeforeCatch: true
+    BeforeElse: true
+UseTab: false
+NamespaceIndentation: All
+TabWidth: 4
+AllowShortFunctionsOnASingleLine: None
+PointerAlignment: Left
+KeepEmptyLinesAtTheStartOfBlocks: false
+IndentWrappedFunctionNames: true
+IndentWidth: 4
+IndentCaseLabels: true
+BreakConstructorInitializers: AfterColon
+ColumnLimit: 110

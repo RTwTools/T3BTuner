@@ -1,5 +1,5 @@
-#ifndef GPIO_H
-#define GPIO_H
+#ifndef Gpio_h
+#define Gpio_h
 
 #include <stdint.h>
 
@@ -15,8 +15,8 @@ enum class GpioState : uint8_t
   High
 };
 
-void GpioModeSet(uint8_t pin, GpioMode mode);
-GpioState GpioRead(uint8_t pin);
-void GpioWrite(uint8_t pin, GpioState value);
+void GpioModeSet(uint8_t const pin, GpioMode const mode);
+GpioState GpioRead(uint8_t const pin);
+void GpioWrite(uint8_t const pin, GpioState const value);
 
-#endif
+#endif // Gpio_h

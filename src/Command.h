@@ -1,14 +1,16 @@
-#ifndef COMMAND_H
-#define COMMAND_H
+#ifndef Command_h
+#define Command_h
 
-#include <inttypes.h>
+#include <stdint.h>
 
-#define COMMAND_MAX_SIZE 20
+static const uint8_t CommandMaxSize = 20U;
+static const uint8_t CommandStartValue = 0xFE;
+static const uint8_t CommandEndValue = 0xFD;
 
 struct Command
 {
-  uint8_t data[COMMAND_MAX_SIZE];
-  uint8_t size = 0;
+    uint8_t data[CommandMaxSize];
+    uint8_t size = 0U;
 };
 
-#endif
+#endif // Command_h

@@ -1,12 +1,12 @@
 #include "SystemAdapt.h"
 #include <Arduino.h>
 
-void SystemDelay(uint32_t milliSeconds)
+void SystemDelay(uint32_t const milliSeconds)
 {
-  delay(milliSeconds);
+    delay(milliSeconds);
 }
 
 uint32_t SystemMillis()
 {
-  return millis();
+    return millis();
 }
