@@ -3,13 +3,11 @@
 #include <SoftwareSerial.h>
 #include <Stream.h>
 
-SerialStream::SerialStream(HardwareSerial* const serial) :
-    SerialStream(serial, SerialType::Hardware)
+SerialStream::SerialStream(HardwareSerial* const serial) : SerialStream(serial, SerialType::Hardware)
 {
 }
 
-SerialStream::SerialStream(SoftwareSerial* const serial) :
-    SerialStream(serial, SerialType::Software)
+SerialStream::SerialStream(SoftwareSerial* const serial) : SerialStream(serial, SerialType::Software)
 {
 }
 

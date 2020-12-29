@@ -5,9 +5,9 @@
 #include "ISerialStream.h"
 #include <stdint.h>
 
-static const uint16_t T3BTunerMaxTextSize = 128U;
-static const uint16_t T3BTunerMaxDataSize = 2 * T3BTunerMaxTextSize;
-static const uint8_t T3BTunerHeaderSize = 6U;
+static uint16_t const T3BTunerMaxTextSize = 128U;
+static uint16_t const T3BTunerMaxDataSize = 2 * T3BTunerMaxTextSize;
+static uint8_t const T3BTunerHeaderSize = 6U;
 
 enum class DabBand : uint8_t
 {
@@ -162,101 +162,105 @@ class T3BTuner
 {
   public:
     T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin);
-    T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin, uint8_t const spiCsPin);
-    void Init();
+    T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin,
+             uint8_t const spiCsPin);
+    void init();
 
     // *************************
     // ***** SYSTEM ************
     // *************************
-    bool Ready();
-    bool Reset(bool const fullReset = false);
-    bool AudioOutput(bool const spdif = true, bool const cinch = true);
+    bool ready();
+    bool reset(bool const fullReset = false);
+    bool audioOutput(bool const spdif = true, bool const cinch = true);
 
     // *************************
     // ***** STREAM ************
     // *************************
-    bool PlayDab(uint32_t const stationId);
-    bool PlayFm(uint32_t const frequency);
-    bool PlayBeep();
-    bool Stop();
-    bool FmSearch(bool const searchForward = true);
-    bool DabSearch(DabBand const band = DabBand::BandIII);
-    bool State(TunerState* const status);
-    bool Mode(TunerMode* const mode);
-    bool NowPlaying(uint32_t* const programId);
-    bool SignalStrength(uint8_t* const signalStrength, uint16_t* const bitErrorRate);
-    bool StereoModeSet(StereoMode const stereoMode = StereoMode::Stereo);
-    bool StereoModeGet(StereoMode* const stereoMode);
-    bool StereoTypeGet(StereoType* const stereotype);
-    bool VolumeSet(uint8_t const volume);
-    bool VolumeGet(uint8_t* const volume);
-    bool StationTypeGet(StationType* const programType);
-    bool DabStationName(uint32_t const stationId, char* const buffer, uint16_t const size, bool const longName = true);
-    bool DabStationText(char* const buffer, uint16_t const size);
-    bool SampleRateGet(SampleRate* const sampleRate);
-    bool DabDataRate(uint16_t* const dataRate);
-    bool DabSignalQuality(uint8_t* const signalQuality);
-    bool DabStationFrequency(uint32_t const stationId, uint8_t* const frequency);
-    bool DabStationEnsembleName(uint32_t const stationId, char* const buffer, uint16_t const size);
-    bool DabStationCount(uint32_t* const count);
-    bool DabStationOnAir(uint32_t const stationId, bool* const onAir);
-    bool DabStationServiceName(uint32_t const stationId, char* const buffer, uint16_t const size);
-    bool DabFoundStationsCount(uint8_t* const count);
-    bool DabStationType(uint32_t const stationId, DabStreamType* const type);
-    bool MemorySet(MemoryType const mode, MemoryId const id, uint32_t const programId);
-    bool MemoryGet(MemoryType const mode, MemoryId const id, uint32_t* const programId);
-    bool DabStationInfo(uint32_t const stationId, uint32_t* const serviceId, uint16_t* const ensembleId);
-    bool DabSortGet(DabSortOrder* const data);
-    bool DabSortSet(DabSortOrder const sortMethod);
-    bool DabDrcGet(DabDrc* const drc);
-    bool DabDrcSet(DabDrc const drc);
-    bool DabRemoveOffAir(uint16_t* const removedTotal, uint16_t* const removedIndex);
-    bool DabExtendedCountryCode(uint8_t* const ecc, uint8_t* const countryId);
-    bool FmRdsPiCode(uint16_t* const code);
-    bool FmStereoThresholdLevelSet(uint8_t const level);
-    bool FmStereoThresholdLevelGet(uint8_t* const level);
-    bool FmRdsRawData(uint16_t* const blockA, uint16_t* const blockB, uint16_t* const blockC, uint16_t* const blockD, uint16_t* const blerA,
-                      uint16_t* const blerB, uint16_t* const blerC, uint16_t* const blerD);
-    bool FmSeekThresholdSet(uint8_t const threshold);
-    bool FmSeekThresholdGet(uint8_t* const threshold);
-    bool FmStereoThresholdSet(uint8_t const threshold);
-    bool FmStereoThresholdGet(uint8_t* const threshold);
-    bool FmExactStationGet(FmExactStation* const exactStation);
+    bool playDab(uint32_t const stationId);
+    bool playFm(uint32_t const frequency);
+    bool playBeep();
+    bool stop();
+    bool fmSearch(bool const searchForward = true);
+    bool dabSearch(DabBand const band = DabBand::BandIII);
+    bool state(TunerState* const status);
+    bool mode(TunerMode* const mode);
+    bool nowPlaying(uint32_t* const programId);
+    bool signalStrength(uint8_t* const signalStrength, uint16_t* const bitErrorRate);
+    bool stereoModeSet(StereoMode const stereoMode = StereoMode::Stereo);
+    bool stereoModeGet(StereoMode* const stereoMode);
+    bool stereoTypeGet(StereoType* const stereotype);
+    bool volumeSet(uint8_t const volume);
+    bool volumeGet(uint8_t* const volume);
+    bool stationTypeGet(StationType* const programType);
+    bool dabStationName(uint32_t const stationId, char* const buffer, uint16_t const size,
+                        bool const longName = true);
+    bool dabStationText(char* const buffer, uint16_t const size);
+    bool sampleRateGet(SampleRate* const sampleRate);
+    bool dabDataRate(uint16_t* const dataRate);
+    bool dabSignalQuality(uint8_t* const signalQuality);
+    bool dabStationFrequency(uint32_t const stationId, uint8_t* const frequency);
+    bool dabStationEnsembleName(uint32_t const stationId, char* const buffer, uint16_t const size);
+    bool dabStationCount(uint32_t* const count);
+    bool dabStationOnAir(uint32_t const stationId, bool* const onAir);
+    bool dabStationServiceName(uint32_t const stationId, char* const buffer, uint16_t const size);
+    bool dabFoundStationsCount(uint8_t* const count);
+    bool dabStationType(uint32_t const stationId, DabStreamType* const type);
+    bool memorySet(MemoryType const mode, MemoryId const id, uint32_t const programId);
+    bool memoryGet(MemoryType const mode, MemoryId const id, uint32_t* const programId);
+    bool dabStationInfo(uint32_t const stationId, uint32_t* const serviceId, uint16_t* const ensembleId);
+    bool dabSortGet(DabSortOrder* const data);
+    bool dabSortSet(DabSortOrder const sortMethod);
+    bool dabDrcGet(DabDrc* const drc);
+    bool dabDrcSet(DabDrc const drc);
+    bool dabRemoveOffAir(uint16_t* const removedTotal, uint16_t* const removedIndex);
+    bool dabExtendedCountryCode(uint8_t* const ecc, uint8_t* const countryId);
+    bool fmRdsPiCode(uint16_t* const code);
+    bool fmStereoThresholdLevelSet(uint8_t const level);
+    bool fmStereoThresholdLevelGet(uint8_t* const level);
+    bool fmRdsRawData(uint16_t* const blockA, uint16_t* const blockB, uint16_t* const blockC,
+                      uint16_t* const blockD, uint16_t* const blerA, uint16_t* const blerB,
+                      uint16_t* const blerC, uint16_t* const blerD);
+    bool fmSeekThresholdSet(uint8_t const threshold);
+    bool fmSeekThresholdGet(uint8_t* const threshold);
+    bool fmStereoThresholdSet(uint8_t const threshold);
+    bool fmStereoThresholdGet(uint8_t* const threshold);
+    bool fmExactStationGet(FmExactStation* const exactStation);
 
     // *************************
     // ***** RTC ***************
     // *************************
-    bool ClockSet(uint8_t const year, uint8_t const month, uint8_t const day, uint8_t const hour, uint8_t const minute, uint8_t const second);
-    bool ClockGet(uint8_t* const year, uint8_t* const month, uint8_t* const day, uint8_t* const hour, uint8_t* const minute,
-                  uint8_t* const second);
-    bool ClockSyncSet(bool const enable);
-    bool ClockSyncGet(bool* const enabled);
-    bool ClockStatusGet(ClockStatus* const status);
+    bool clockSet(uint8_t const year, uint8_t const month, uint8_t const day, uint8_t const hour,
+                  uint8_t const minute, uint8_t const second);
+    bool clockGet(uint8_t* const year, uint8_t* const month, uint8_t* const day, uint8_t* const hour,
+                  uint8_t* const minute, uint8_t* const second);
+    bool clockSyncSet(bool const enable);
+    bool clockSyncGet(bool* const enabled);
+    bool clockStatusGet(ClockStatus* const status);
 
     // *************************
     // ***** EVENTS ************
     // *************************
-    bool EventEnable(bool const enable);
-    bool EventReceived();
-    bool EventRead(EventType* const type);
+    bool eventEnable(bool const enable);
+    bool eventReceived();
+    bool eventRead(EventType* const type);
 
   private:
     // *************************
     // ***** PRIVATE FUNCTIONS *
     // *************************
-    bool CommandSend(Command const& command);
-    bool ResponseReceive();
-    bool ResponseText(char* const buffer, uint16_t const size);
-    bool ResponseUint8(uint8_t const index, uint8_t* const resp);
-    bool ResponseUint16(uint8_t const index, uint16_t* const resp);
-    bool ResponseUint32(uint8_t const index, uint32_t* const resp);
-    char Uint16ToChar(uint8_t const byte0, uint8_t const byte1);
+    bool commandSend(Command const& command);
+    bool responseReceive();
+    bool responseText(char* const buffer, uint16_t const size);
+    bool responseUint8(uint8_t const index, uint8_t* const resp);
+    bool responseUint16(uint8_t const index, uint16_t* const resp);
+    bool responseUint32(uint8_t const index, uint32_t* const resp);
+    char uint16ToChar(uint8_t const byte0, uint8_t const byte1);
 
     CommandBuilder commandBuilder;
     uint8_t response[T3BTunerMaxDataSize];
     uint8_t responseHeader[T3BTunerHeaderSize];
     uint16_t responseSize = 0U;
-    char dabStationText[T3BTunerMaxTextSize];
+    char stationText[T3BTunerMaxTextSize];
 
     ISerialStream* serial;
     uint8_t pinReset;

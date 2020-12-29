@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void SystemDelay(uint32_t const milliSeconds);
-uint32_t SystemMillis();
+void systemDelay(uint32_t const milliSeconds);
+uint32_t systemMillis();
 
 #endif // SystemAdapt_h

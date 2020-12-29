@@ -23,32 +23,32 @@ T3BTuner::T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t 
 {
 }
 
-void T3BTuner::Init()
+void T3BTuner::init()
 {
     if (pinMute != UnusedPin)
     {
-        GpioModeSet(pinMute, GpioMode::Output);
-        GpioWrite(pinMute, GpioState::High);
+        gpioModeSet(pinMute, GpioMode::Output);
+        gpioWrite(pinMute, GpioState::High);
     }
 
     if (pinSpiCs != UnusedPin)
     {
-        GpioModeSet(pinSpiCs, GpioMode::Output);
-        GpioWrite(pinSpiCs, GpioState::Low);
+        gpioModeSet(pinSpiCs, GpioMode::Output);
+        gpioWrite(pinSpiCs, GpioState::Low);
     }
 
     serial->begin(TunerSerialBaudrate);
     serial->setTimeout(50U);
 
-    GpioModeSet(pinReset, GpioMode::Output);
-    GpioWrite(pinReset, GpioState::Low);
-    SystemDelay(100U);
-    GpioWrite(pinReset, GpioState::High);
-    SystemDelay(1000U);
+    gpioModeSet(pinReset, GpioMode::Output);
+    gpioWrite(pinReset, GpioState::Low);
+    systemDelay(100U);
+    gpioWrite(pinReset, GpioState::High);
+    systemDelay(1000U);
 
-    while (!Ready())
+    while (!ready())
     {
-        SystemDelay(500U);
+        systemDelay(500U);
     }
 }
 
@@ -59,24 +59,24 @@ void T3BTuner::Init()
 /*
  *   Test for DAB module is ready for communication
  */
-bool T3BTuner::Ready()
+bool T3BTuner::ready()
 {
-    Command command = commandBuilder.CreateSystem(CmdSystemId::Ready).Build();
-    return CommandSend(command);
+    Command command = commandBuilder.createSystem(CmdSystemId::Ready).build();
+    return commandSend(command);
 }
 
 /*
  *   Reset module.
  *   FullReset => Reset module database & module.
  */
-bool T3BTuner::Reset(bool const fullReset)
+bool T3BTuner::reset(bool const fullReset)
 {
     Command command =
-        commandBuilder.CreateSystem(CmdSystemId::Reset).Append(static_cast<uint8_t>(fullReset)).Build();
+        commandBuilder.createSystem(CmdSystemId::Reset).append(static_cast<uint8_t>(fullReset)).build();
 
-    if (CommandSend(command))
+    if (commandSend(command))
     {
-        Init();
+        init();
         return true;
     }
     return false;
@@ -86,12 +86,12 @@ bool T3BTuner::Reset(bool const fullReset)
  *   Set audio output channels (SPDIF, CINCH /I2S DAC/)
  *   CINCH for analog output, SPDIF for optical digital output
  */
-bool T3BTuner::AudioOutput(bool const spdif, bool const cinch)
+bool T3BTuner::audioOutput(bool const spdif, bool const cinch)
 {
     uint8_t param = static_cast<uint8_t>(spdif) | (static_cast<uint8_t>(cinch << 0x1));
-    Command command = commandBuilder.CreateSystem(CmdSystemId::AudioOutput).Append(param).Build();
+    Command command = commandBuilder.createSystem(CmdSystemId::AudioOutput).append(param).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 // *************************
@@ -102,116 +102,116 @@ bool T3BTuner::AudioOutput(bool const spdif, bool const cinch)
  *   Play DAB program
  *   programIndex = 1..9999999 (see programs index)
  */
-bool T3BTuner::PlayDab(uint32_t const stationId)
+bool T3BTuner::playDab(uint32_t const stationId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Play)
-                          .Append(static_cast<uint8_t>(TunerMode::Dab))
-                          .Append(stationId)
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::Play)
+                          .append(static_cast<uint8_t>(TunerMode::Dab))
+                          .append(stationId)
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Play FM program
  *   frequency = 87500..108000 (MHz)
  */
-bool T3BTuner::PlayFm(uint32_t const frequency)
+bool T3BTuner::playFm(uint32_t const frequency)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Play)
-                          .Append(static_cast<uint8_t>(TunerMode::Fm))
-                          .Append(frequency)
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::Play)
+                          .append(static_cast<uint8_t>(TunerMode::Fm))
+                          .append(frequency)
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Play Beep.
  */
-bool T3BTuner::PlayBeep()
+bool T3BTuner::playBeep()
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Play)
-                          .Append(static_cast<uint8_t>(TunerMode::Beep))
-                          .Append(static_cast<uint32_t>(0x00))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::Play)
+                          .append(static_cast<uint8_t>(TunerMode::Beep))
+                          .append(static_cast<uint32_t>(0x00))
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Stop.
  */
-bool T3BTuner::Stop()
+bool T3BTuner::stop()
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Stop).Build();
-    return CommandSend(command);
+    Command command = commandBuilder.createStream(CmdStreamId::Stop).build();
+    return commandSend(command);
 }
 
 /*
  * Seek FM program.
  */
-bool T3BTuner::FmSearch(bool const searchForward)
+bool T3BTuner::fmSearch(bool const searchForward)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::SearchFm)
-                          .Append(static_cast<uint8_t>(searchForward))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::SearchFm)
+                          .append(static_cast<uint8_t>(searchForward))
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  * Search DAB bands for programs.
  */
-bool T3BTuner::DabSearch(DabBand const band)
+bool T3BTuner::dabSearch(DabBand const band)
 {
-    commandBuilder.CreateStream(CmdStreamId::SearchDab);
+    commandBuilder.createStream(CmdStreamId::SearchDab);
 
     switch (band)
     {
         case DabBand::BandIII:
-            commandBuilder.Append(static_cast<uint8_t>(0U));
-            commandBuilder.Append(static_cast<uint8_t>(40U));
+            commandBuilder.append(static_cast<uint8_t>(0U));
+            commandBuilder.append(static_cast<uint8_t>(40U));
             break;
         case DabBand::ChinaBand:
-            commandBuilder.Append(static_cast<uint8_t>(41U));
-            commandBuilder.Append(static_cast<uint8_t>(71U));
+            commandBuilder.append(static_cast<uint8_t>(41U));
+            commandBuilder.append(static_cast<uint8_t>(71U));
             break;
         case DabBand::LBand:
-            commandBuilder.Append(static_cast<uint8_t>(72U));
-            commandBuilder.Append(static_cast<uint8_t>(94U));
+            commandBuilder.append(static_cast<uint8_t>(72U));
+            commandBuilder.append(static_cast<uint8_t>(94U));
             break;
     }
 
-    Command command = commandBuilder.Build();
-    return CommandSend(command);
+    Command command = commandBuilder.build();
+    return commandSend(command);
 }
 
 /*
  *   Radio module play status.
  */
-bool T3BTuner::State(TunerState* const status)
+bool T3BTuner::state(TunerState* const status)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Status).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(status)));
+    Command command = commandBuilder.createStream(CmdStreamId::Status).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(status)));
 }
 
 /*
  *   Radio module play mode.
  */
-bool T3BTuner::Mode(TunerMode* const mode)
+bool T3BTuner::mode(TunerMode* const mode)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::Mode).Build();
-    return (CommandSend(command) && ResponseUint8(0, reinterpret_cast<uint8_t*>(mode)));
+    Command command = commandBuilder.createStream(CmdStreamId::Mode).build();
+    return (commandSend(command) && responseUint8(0, reinterpret_cast<uint8_t*>(mode)));
 }
 
 /*
  * Get DAB stationId, get FM frequency.
  */
-bool T3BTuner::NowPlaying(uint32_t* const programId)
+bool T3BTuner::nowPlaying(uint32_t* const programId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::NowPlaying).Build();
-    return (CommandSend(command) && ResponseUint32(0U, programId));
+    Command command = commandBuilder.createStream(CmdStreamId::NowPlaying).build();
+    return (commandSend(command) && responseUint32(0U, programId));
 }
 
 /*
@@ -219,85 +219,85 @@ bool T3BTuner::NowPlaying(uint32_t* const programId)
  * DAB: signalStrength=0..18, bitErrorRate=
  * FM: signalStrength=0..100
  */
-bool T3BTuner::SignalStrength(uint8_t* const signalStrength, uint16_t* const bitErrorRate)
+bool T3BTuner::signalStrength(uint8_t* const signalStrength, uint16_t* const bitErrorRate)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::SignalStrength).Build();
-    return (CommandSend(command) && ResponseUint8(0U, signalStrength) && ResponseUint16(1U, bitErrorRate));
+    Command command = commandBuilder.createStream(CmdStreamId::SignalStrength).build();
+    return (commandSend(command) && responseUint8(0U, signalStrength) && responseUint16(1U, bitErrorRate));
 }
 
 /*
  *   Set stereo mode.
  */
-bool T3BTuner::StereoModeSet(StereoMode const stereoMode)
+bool T3BTuner::stereoModeSet(StereoMode const stereoMode)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::StereoModeSet)
-                          .Append(static_cast<uint8_t>(stereoMode))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::StereoModeSet)
+                          .append(static_cast<uint8_t>(stereoMode))
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get stereo mode.
  */
-bool T3BTuner::StereoModeGet(StereoMode* const stereoMode)
+bool T3BTuner::stereoModeGet(StereoMode* const stereoMode)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::StereoModeGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(stereoMode)));
+    Command command = commandBuilder.createStream(CmdStreamId::StereoModeGet).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(stereoMode)));
 }
 
 /*
  *   Get stereo type
  */
-bool T3BTuner::StereoTypeGet(StereoType* const stereotype)
+bool T3BTuner::stereoTypeGet(StereoType* const stereotype)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::StereoType).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(stereotype)));
+    Command command = commandBuilder.createStream(CmdStreamId::StereoType).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(stereotype)));
 }
 
 /*
  *   Set volume.
  *   volumeLevel = 0..16
  */
-bool T3BTuner::VolumeSet(uint8_t const volume)
+bool T3BTuner::volumeSet(uint8_t const volume)
 {
     uint8_t volumeValue = (volume > 16U) ? 16U : volume;
-    Command command = commandBuilder.CreateStream(CmdStreamId::VolumeSet).Append(volumeValue).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::VolumeSet).append(volumeValue).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get volume.
  *   return set volumeLevel: 0..16
  */
-bool T3BTuner::VolumeGet(uint8_t* const volume)
+bool T3BTuner::volumeGet(uint8_t* const volume)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::VolumeGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, volume));
+    Command command = commandBuilder.createStream(CmdStreamId::VolumeGet).build();
+    return (commandSend(command) && responseUint8(0U, volume));
 }
 
 /*
  *   Get program type.
  */
-bool T3BTuner::StationTypeGet(StationType* const programType)
+bool T3BTuner::stationTypeGet(StationType* const programType)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::StationType).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(programType)));
+    Command command = commandBuilder.createStream(CmdStreamId::StationType).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(programType)));
 }
 
 /*
  * Get DAB station name.
  */
-bool T3BTuner::DabStationName(uint32_t const stationId, char* const buffer, uint16_t const size,
+bool T3BTuner::dabStationName(uint32_t const stationId, char* const buffer, uint16_t const size,
                               bool const longName)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationName)
-                          .Append(stationId)
-                          .Append(static_cast<uint8_t>(longName))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationName)
+                          .append(stationId)
+                          .append(static_cast<uint8_t>(longName))
+                          .build();
 
-    return (CommandSend(command) && ResponseText(buffer, size));
+    return (commandSend(command) && responseText(buffer, size));
 }
 
 /*
@@ -305,10 +305,10 @@ bool T3BTuner::DabStationName(uint32_t const stationId, char* const buffer, uint
  * return: 1=new text, 2=text is same, 3=no text
  * dabText: text
  */
-bool T3BTuner::DabStationText(char* const buffer, uint16_t const size)
+bool T3BTuner::dabStationText(char* const buffer, uint16_t const size)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationText).Build();
-    if (CommandSend(command))
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationText).build();
+    if (commandSend(command))
     {
         if (responseSize == 1)
         {
@@ -317,9 +317,9 @@ bool T3BTuner::DabStationText(char* const buffer, uint16_t const size)
             return false;
         }
 
-        ResponseText(buffer, size);
-        bool changed = (strncmp(buffer, dabStationText, sizeof(dabStationText)) != 0);
-        strncpy(dabStationText, buffer, sizeof(dabStationText));
+        responseText(buffer, size);
+        bool changed = (strncmp(buffer, stationText, sizeof(stationText)) != 0);
+        strncpy(stationText, buffer, sizeof(stationText));
         return changed;
     }
 
@@ -329,20 +329,20 @@ bool T3BTuner::DabStationText(char* const buffer, uint16_t const size)
 /*
  *   Get sampling rate (DAB/FM).
  */
-bool T3BTuner::SampleRateGet(SampleRate* const sampleRate)
+bool T3BTuner::sampleRateGet(SampleRate* const sampleRate)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::SampleRate).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(sampleRate)));
+    Command command = commandBuilder.createStream(CmdStreamId::SampleRate).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(sampleRate)));
 }
 
 /*
  *   Get data rate (DAB)
  *   return data: data rate in kbps
  */
-bool T3BTuner::DabDataRate(uint16_t* const dataRate)
+bool T3BTuner::dabDataRate(uint16_t* const dataRate)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabDataRate).Build();
-    return (CommandSend(command) && ResponseUint16(0U, dataRate));
+    Command command = commandBuilder.createStream(CmdStreamId::DabDataRate).build();
+    return (commandSend(command) && responseUint16(0U, dataRate));
 }
 
 /*
@@ -352,10 +352,10 @@ bool T3BTuner::DabDataRate(uint16_t* const dataRate)
  *   20..30 = the noise (short break) appears
  *   100 = the bit error rate is 0
  */
-bool T3BTuner::DabSignalQuality(uint8_t* const signalQuality)
+bool T3BTuner::dabSignalQuality(uint8_t* const signalQuality)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabSignalQuality).Build();
-    return (CommandSend(command) && ResponseUint8(0U, signalQuality));
+    Command command = commandBuilder.createStream(CmdStreamId::DabSignalQuality).build();
+    return (commandSend(command) && responseUint8(0U, signalQuality));
 }
 
 /*
@@ -365,44 +365,44 @@ bool T3BTuner::DabSignalQuality(uint8_t* const signalQuality)
  *
  *  // TODO: add conversion table for index2freqency
  */
-bool T3BTuner::DabStationFrequency(uint32_t const stationId, uint8_t* const frequency)
+bool T3BTuner::dabStationFrequency(uint32_t const stationId, uint8_t* const frequency)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabFrequency).Append(stationId).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabFrequency).append(stationId).build();
 
-    return (CommandSend(command) && ResponseUint8(0U, frequency));
+    return (commandSend(command) && responseUint8(0U, frequency));
 }
 
 /*
  * Get DAB program ensemble name.
  */
-bool T3BTuner::DabStationEnsembleName(uint32_t const stationId, char* const buffer, uint16_t const size)
+bool T3BTuner::dabStationEnsembleName(uint32_t const stationId, char* const buffer, uint16_t const size)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabEnsembleName)
-                          .Append(stationId)
-                          .Append(static_cast<uint8_t>(false))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabEnsembleName)
+                          .append(stationId)
+                          .append(static_cast<uint8_t>(false))
+                          .build();
 
-    return (CommandSend(command) && ResponseText(buffer, size));
+    return (commandSend(command) && responseText(buffer, size));
 }
 
 /*
  * Number of DAB stations in database.
  */
-bool T3BTuner::DabStationCount(uint32_t* const count)
+bool T3BTuner::dabStationCount(uint32_t* const count)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationCount).Build();
-    return (CommandSend(command) && ResponseUint32(0U, count));
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationCount).build();
+    return (commandSend(command) && responseUint32(0U, count));
 }
 
 /*
  *   Test DAB program is active (on-air)
  *   return: 0=off-air, 1=on-air
  */
-bool T3BTuner::DabStationOnAir(uint32_t const stationId, bool* const onAir)
+bool T3BTuner::dabStationOnAir(uint32_t const stationId, bool* const onAir)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationOnAir).Append(stationId).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationOnAir).append(stationId).build();
 
-    bool result = CommandSend(command);
+    bool result = commandSend(command);
     *onAir = static_cast<bool>(response[0U]);
     return result;
 }
@@ -410,60 +410,60 @@ bool T3BTuner::DabStationOnAir(uint32_t const stationId, bool* const onAir)
 /*
  * Get DAB program service short name.
  */
-bool T3BTuner::DabStationServiceName(uint32_t const stationId, char* const buffer, uint16_t const size)
+bool T3BTuner::dabStationServiceName(uint32_t const stationId, char* const buffer, uint16_t const size)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationServiceName)
-                          .Append(stationId)
-                          .Append(static_cast<uint8_t>(false))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationServiceName)
+                          .append(stationId)
+                          .append(static_cast<uint8_t>(false))
+                          .build();
 
-    return (CommandSend(command) && ResponseText(buffer, size));
+    return (commandSend(command) && responseText(buffer, size));
 }
 
 /*
  * Number of programs found in search process.
  */
-bool T3BTuner::DabFoundStationsCount(uint8_t* const count)
+bool T3BTuner::dabFoundStationsCount(uint8_t* const count)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabFoundStationsCount).Build();
-    return (CommandSend(command) && ResponseUint8(0U, count));
+    Command command = commandBuilder.createStream(CmdStreamId::DabFoundStationsCount).build();
+    return (commandSend(command) && responseUint8(0U, count));
 }
 
 /*
  * Get DAB program service component type (ASCTy)
  */
-bool T3BTuner::DabStationType(uint32_t const stationId, DabStreamType* const type)
+bool T3BTuner::dabStationType(uint32_t const stationId, DabStreamType* const type)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationType).Append(stationId).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationType).append(stationId).build();
 
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(type)));
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(type)));
 }
 
 /*
  *   Set preset
  */
-bool T3BTuner::MemorySet(MemoryType const mode, MemoryId const id, uint32_t const programId)
+bool T3BTuner::memorySet(MemoryType const mode, MemoryId const id, uint32_t const programId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::MemorySet)
-                          .Append(static_cast<uint8_t>(mode))
-                          .Append(static_cast<uint8_t>(id))
-                          .Append(programId)
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::MemorySet)
+                          .append(static_cast<uint8_t>(mode))
+                          .append(static_cast<uint8_t>(id))
+                          .append(programId)
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *  Get preset
  */
-bool T3BTuner::MemoryGet(MemoryType const mode, MemoryId const id, uint32_t* const programId)
+bool T3BTuner::memoryGet(MemoryType const mode, MemoryId const id, uint32_t* const programId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::MemoryGet)
-                          .Append(static_cast<uint8_t>(mode))
-                          .Append(static_cast<uint8_t>(id))
-                          .Build();
+    Command command = commandBuilder.createStream(CmdStreamId::MemoryGet)
+                          .append(static_cast<uint8_t>(mode))
+                          .append(static_cast<uint8_t>(id))
+                          .build();
 
-    return (CommandSend(command) && ResponseUint32(0U, programId));
+    return (commandSend(command) && responseUint32(0U, programId));
 }
 
 /*
@@ -471,60 +471,60 @@ bool T3BTuner::MemoryGet(MemoryType const mode, MemoryId const id, uint32_t* con
  * return serviceId = service id of DAB program
  * return ensembleId = ensemble id of DAB program
  */
-bool T3BTuner::DabStationInfo(uint32_t const stationId, uint32_t* const serviceId, uint16_t* const ensembleId)
+bool T3BTuner::dabStationInfo(uint32_t const stationId, uint32_t* const serviceId, uint16_t* const ensembleId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabStationInfo).Append(stationId).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::DabStationInfo).append(stationId).build();
 
-    return (CommandSend(command) && ResponseUint32(0U, serviceId) && ResponseUint16(4U, ensembleId));
+    return (commandSend(command) && responseUint32(0U, serviceId) && responseUint16(4U, ensembleId));
 }
 
 /*
  *   Get DAB station sort order.
  */
-bool T3BTuner::DabSortGet(DabSortOrder* const sortOrder)
+bool T3BTuner::dabSortGet(DabSortOrder* const sortOrder)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabSortGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(sortOrder)));
+    Command command = commandBuilder.createStream(CmdStreamId::DabSortGet).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(sortOrder)));
 }
 
 /*
  *   Set DAB station sort order.
  */
-bool T3BTuner::DabSortSet(DabSortOrder const sortOrder)
+bool T3BTuner::dabSortSet(DabSortOrder const sortOrder)
 {
     Command command =
-        commandBuilder.CreateStream(CmdStreamId::DabSortSet).Append(static_cast<uint8_t>(sortOrder)).Build();
+        commandBuilder.createStream(CmdStreamId::DabSortSet).append(static_cast<uint8_t>(sortOrder)).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get DAB DRC.
  */
-bool T3BTuner::DabDrcGet(DabDrc* const drc)
+bool T3BTuner::dabDrcGet(DabDrc* const drc)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabDrcGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(drc)));
+    Command command = commandBuilder.createStream(CmdStreamId::DabDrcGet).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(drc)));
 }
 
 /*
  *   Set DAB DRC.
  */
-bool T3BTuner::DabDrcSet(DabDrc const drc)
+bool T3BTuner::dabDrcSet(DabDrc const drc)
 {
     Command command =
-        commandBuilder.CreateStream(CmdStreamId::DabDrcSet).Append(static_cast<uint8_t>(drc)).Build();
+        commandBuilder.createStream(CmdStreamId::DabDrcSet).append(static_cast<uint8_t>(drc)).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Prune programs - delete inactive programs (!on-air)
  */
-bool T3BTuner::DabRemoveOffAir(uint16_t* const removedTotal, uint16_t* const removedIndex)
+bool T3BTuner::dabRemoveOffAir(uint16_t* const removedTotal, uint16_t* const removedIndex)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabRemoveOffAir).Build();
-    return (CommandSend(command) && ResponseUint16(0U, removedTotal) && ResponseUint16(2U, removedIndex));
+    Command command = commandBuilder.createStream(CmdStreamId::DabRemoveOffAir).build();
+    return (commandSend(command) && responseUint16(0U, removedTotal) && responseUint16(2U, removedIndex));
 }
 
 /*
@@ -532,57 +532,57 @@ bool T3BTuner::DabRemoveOffAir(uint16_t* const removedTotal, uint16_t* const rem
  * return ECC (Extended Country Code)
  * return countryId (Country identification)
  */
-bool T3BTuner::DabExtendedCountryCode(uint8_t* const ecc, uint8_t* const countryId)
+bool T3BTuner::dabExtendedCountryCode(uint8_t* const ecc, uint8_t* const countryId)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::DabExtendedCountryCode).Build();
-    return (CommandSend(command) && ResponseUint8(0U, ecc) && ResponseUint8(1U, countryId));
+    Command command = commandBuilder.createStream(CmdStreamId::DabExtendedCountryCode).build();
+    return (commandSend(command) && responseUint8(0U, ecc) && responseUint8(1U, countryId));
 }
 
 /*
  *   Get FM RDS PI code
  */
-bool T3BTuner::FmRdsPiCode(uint16_t* const code)
+bool T3BTuner::fmRdsPiCode(uint16_t* const code)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmRdsPiCode).Build();
-    return (CommandSend(command) && ResponseUint16(0U, code));
+    Command command = commandBuilder.createStream(CmdStreamId::FmRdsPiCode).build();
+    return (commandSend(command) && responseUint16(0U, code));
 }
 
 /*
  *   Set FMstereoThdLevel
  *   RSSIthresholdLevel = 0..10
  */
-bool T3BTuner::FmStereoThresholdLevelSet(uint8_t const level)
+bool T3BTuner::fmStereoThresholdLevelSet(uint8_t const level)
 {
     Command command =
-        commandBuilder.CreateStream(CmdStreamId::FmStereoThresholdLevelSet).Append(level).Build();
+        commandBuilder.createStream(CmdStreamId::FmStereoThresholdLevelSet).append(level).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get FMstereoThdLevel
  *   data return = 0..10
  */
-bool T3BTuner::FmStereoThresholdLevelGet(uint8_t* const level)
+bool T3BTuner::fmStereoThresholdLevelGet(uint8_t* const level)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmStereoThresholdLevelGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, level));
+    Command command = commandBuilder.createStream(CmdStreamId::FmStereoThresholdLevelGet).build();
+    return (commandSend(command) && responseUint8(0U, level));
 }
 
 /*
  *   Get RDS raw data
  *   return: 1=new RDS data, 2=no new RDS data, 3=no RDS data
  */
-bool T3BTuner::FmRdsRawData(uint16_t* const blockA, uint16_t* const blockB, uint16_t* const blockC,
+bool T3BTuner::fmRdsRawData(uint16_t* const blockA, uint16_t* const blockB, uint16_t* const blockC,
                             uint16_t* const blockD, uint16_t* const blerA, uint16_t* const blerB,
                             uint16_t* const blerC, uint16_t* const blerD)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmRdsData).Build();
-    if (CommandSend(command) && responseSize > 1U)
+    Command command = commandBuilder.createStream(CmdStreamId::FmRdsData).build();
+    if (commandSend(command) && responseSize > 1U)
     {
-        return (ResponseUint16(0, blockA) && ResponseUint16(2, blockB) && ResponseUint16(4U, blockC) &&
-                ResponseUint16(6U, blockD) && ResponseUint16(8U, blerA) && ResponseUint16(10U, blerB) &&
-                ResponseUint16(12U, blerC) && ResponseUint16(14U, blerD));
+        return (responseUint16(0, blockA) && responseUint16(2, blockB) && responseUint16(4U, blockC) &&
+                responseUint16(6U, blockD) && responseUint16(8U, blerA) && responseUint16(10U, blerB) &&
+                responseUint16(12U, blerC) && responseUint16(14U, blerD));
     }
     return false;
 }
@@ -591,52 +591,52 @@ bool T3BTuner::FmRdsRawData(uint16_t* const blockA, uint16_t* const blockB, uint
  *   Set FMseekThreshold
  *   RSSIthreshold = 0..100
  */
-bool T3BTuner::FmSeekThresholdSet(uint8_t const threshold)
+bool T3BTuner::fmSeekThresholdSet(uint8_t const threshold)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmSeekThresholdSet).Append(threshold).Build();
+    Command command = commandBuilder.createStream(CmdStreamId::FmSeekThresholdSet).append(threshold).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get FMseekThreshold
  *   data return = 0..100
  */
-bool T3BTuner::FmSeekThresholdGet(uint8_t* const threshold)
+bool T3BTuner::fmSeekThresholdGet(uint8_t* const threshold)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmSeekThresholdGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, threshold));
+    Command command = commandBuilder.createStream(CmdStreamId::FmSeekThresholdGet).build();
+    return (commandSend(command) && responseUint8(0U, threshold));
 }
 
 /*
  *   Set FMstereoThreshold
  *   RSSIthreshold = 0..100
  */
-bool T3BTuner::FmStereoThresholdSet(uint8_t const threshold)
+bool T3BTuner::fmStereoThresholdSet(uint8_t const threshold)
 {
     Command command =
-        commandBuilder.CreateStream(CmdStreamId::FmStereoThresholdSet).Append(threshold).Build();
+        commandBuilder.createStream(CmdStreamId::FmStereoThresholdSet).append(threshold).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *   Get FMstereoThreshold
  *   data return = 0..100
  */
-bool T3BTuner::FmStereoThresholdGet(uint8_t* const threshold)
+bool T3BTuner::fmStereoThresholdGet(uint8_t* const threshold)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmStereoThresholdGet).Build();
-    return (CommandSend(command) && ResponseUint8(0U, threshold));
+    Command command = commandBuilder.createStream(CmdStreamId::FmStereoThresholdGet).build();
+    return (commandSend(command) && responseUint8(0U, threshold));
 }
 
 /*
  *   Get FM Exact station.
  */
-bool T3BTuner::FmExactStationGet(FmExactStation* const exact)
+bool T3BTuner::fmExactStationGet(FmExactStation* const exact)
 {
-    Command command = commandBuilder.CreateStream(CmdStreamId::FmExactStation).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(exact)));
+    Command command = commandBuilder.createStream(CmdStreamId::FmExactStation).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(exact)));
 }
 
 // *************************
@@ -647,54 +647,54 @@ bool T3BTuner::FmExactStationGet(FmExactStation* const exact)
  *  Set RTC clock
  *  year: 2017=17,2018=18, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59, second: 0..59
  */
-bool T3BTuner::ClockSet(uint8_t const year, uint8_t const month, uint8_t const day, uint8_t const hour,
+bool T3BTuner::clockSet(uint8_t const year, uint8_t const month, uint8_t const day, uint8_t const hour,
                         uint8_t const minute, uint8_t const second)
 {
-    Command command = commandBuilder.CreateRtc(CmdRtcId::Set)
-                          .Append(second)
-                          .Append(minute)
-                          .Append(hour)
-                          .Append(day)
-                          .Append(static_cast<uint8_t>(0x00))
-                          .Append(month)
-                          .Append(year)
-                          .Build();
+    Command command = commandBuilder.createRtc(CmdRtcId::Set)
+                          .append(second)
+                          .append(minute)
+                          .append(hour)
+                          .append(day)
+                          .append(static_cast<uint8_t>(0x00))
+                          .append(month)
+                          .append(year)
+                          .build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *  Get RTC ckock
  *  year: 2017=17,2018=18, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59, second: 0..59
  */
-bool T3BTuner::ClockGet(uint8_t* const year, uint8_t* const month, uint8_t* const day, uint8_t* const hour,
+bool T3BTuner::clockGet(uint8_t* const year, uint8_t* const month, uint8_t* const day, uint8_t* const hour,
                         uint8_t* const minute, uint8_t* const second)
 {
-    Command command = commandBuilder.CreateRtc(CmdRtcId::Get).Build();
-    bool result = CommandSend(command);
-    result &= ResponseUint8(0U, second) & ResponseUint8(1U, minute);
-    result &= ResponseUint8(2U, hour) & ResponseUint8(3U, day);
-    result &= ResponseUint8(5U, month) & ResponseUint8(6U, year);
+    Command command = commandBuilder.createRtc(CmdRtcId::Get).build();
+    bool result = commandSend(command);
+    result &= responseUint8(0U, second) & responseUint8(1U, minute);
+    result &= responseUint8(2U, hour) & responseUint8(3U, day);
+    result &= responseUint8(5U, month) & responseUint8(6U, year);
     return result;
 }
 
 /*
  *  Set RTC sync clock from stream enable
  */
-bool T3BTuner::ClockSyncSet(bool const enable)
+bool T3BTuner::clockSyncSet(bool const enable)
 {
-    Command command = commandBuilder.CreateRtc(CmdRtcId::Sync).Append(static_cast<uint8_t>(enable)).Build();
+    Command command = commandBuilder.createRtc(CmdRtcId::Sync).append(static_cast<uint8_t>(enable)).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
 /*
  *  Get RTC sync clock status
  */
-bool T3BTuner::ClockSyncGet(bool* const enabled)
+bool T3BTuner::clockSyncGet(bool* const enabled)
 {
-    Command command = commandBuilder.CreateRtc(CmdRtcId::SyncStatus).Build();
-    bool result = CommandSend(command);
+    Command command = commandBuilder.createRtc(CmdRtcId::SyncStatus).build();
+    bool result = commandSend(command);
     *enabled = response[0U];
     return result;
 }
@@ -702,10 +702,10 @@ bool T3BTuner::ClockSyncGet(bool* const enabled)
 /*
  *  Get RTC clock status
  */
-bool T3BTuner::ClockStatusGet(ClockStatus* const status)
+bool T3BTuner::clockStatusGet(ClockStatus* const status)
 {
-    Command command = commandBuilder.CreateRtc(CmdRtcId::StatusClock).Build();
-    return (CommandSend(command) && ResponseUint8(0U, reinterpret_cast<uint8_t*>(status)));
+    Command command = commandBuilder.createRtc(CmdRtcId::StatusClock).build();
+    return (commandSend(command) && responseUint8(0U, reinterpret_cast<uint8_t*>(status)));
 }
 
 // *************************
@@ -715,16 +715,16 @@ bool T3BTuner::ClockStatusGet(ClockStatus* const status)
 /*
  *   Enabled / Disable event notifications.
  */
-bool T3BTuner::EventEnable(bool const enable)
+bool T3BTuner::eventEnable(bool const enable)
 {
     uint16_t value = (enable) ? 0x7F : 0x00;
     Command command =
-        commandBuilder.CreateNotification(CmdNotificationId::Notification).Append(value).Build();
+        commandBuilder.createNotification(CmdNotificationId::Notification).append(value).build();
 
-    return CommandSend(command);
+    return commandSend(command);
 }
 
-bool T3BTuner::EventReceived()
+bool T3BTuner::eventReceived()
 {
     return (bool)serial->available();
 }
@@ -732,9 +732,9 @@ bool T3BTuner::EventReceived()
 /*
  *   Read event
  */
-bool T3BTuner::EventRead(EventType* const type)
+bool T3BTuner::eventRead(EventType* const type)
 {
-    bool result = (ResponseReceive() && ((CommandType)responseHeader[1U] == CommandType::Notification));
+    bool result = (responseReceive() && ((CommandType)responseHeader[1U] == CommandType::Notification));
     *type = (EventType)responseHeader[2U];
     return result;
 }
@@ -746,7 +746,7 @@ bool T3BTuner::EventRead(EventType* const type)
 /*
  *  Send command to DAB module and wait for answer
  */
-bool T3BTuner::CommandSend(Command const& command)
+bool T3BTuner::commandSend(Command const& command)
 {
     while (serial->available())
     {
@@ -754,18 +754,18 @@ bool T3BTuner::CommandSend(Command const& command)
     }
     serial->write(command.data, command.size);
     serial->flush();
-    return (ResponseReceive() &&
+    return (responseReceive() &&
             !(responseHeader[1U] == ResponseAck && responseHeader[2U] == ResponseAckNack));
 }
 
-bool T3BTuner::ResponseReceive()
+bool T3BTuner::responseReceive()
 {
     uint16_t index = 0U;
     uint8_t data = 0U;
-    uint32_t endMillis = SystemMillis() + 200U; // timeout for answer from module = 200ms
+    uint32_t endMillis = systemMillis() + 200U; // timeout for answer from module = 200ms
     responseSize = 0U;
 
-    while (SystemMillis() < endMillis && index < T3BTunerMaxDataSize)
+    while (systemMillis() < endMillis && index < T3BTunerMaxDataSize)
     {
         if (serial->available())
         {
@@ -803,19 +803,19 @@ bool T3BTuner::ResponseReceive()
     return false;
 }
 
-bool T3BTuner::ResponseText(char* const buffer, uint16_t const size)
+bool T3BTuner::responseText(char* const buffer, uint16_t const size)
 {
     uint16_t j = 0U;
     for (uint16_t i = 0U; i < responseSize; i = i + 2U)
     {
         if (size <= j)
             return false;
-        buffer[j++] = Uint16ToChar(response[i], response[i + 1U]);
+        buffer[j++] = uint16ToChar(response[i], response[i + 1U]);
     }
     return true;
 }
 
-bool T3BTuner::ResponseUint8(uint8_t const index, uint8_t* const resp)
+bool T3BTuner::responseUint8(uint8_t const index, uint8_t* const resp)
 {
     if (responseSize > index)
     {
@@ -825,7 +825,7 @@ bool T3BTuner::ResponseUint8(uint8_t const index, uint8_t* const resp)
     return false;
 }
 
-bool T3BTuner::ResponseUint16(uint8_t const index, uint16_t* const resp)
+bool T3BTuner::responseUint16(uint8_t const index, uint16_t* const resp)
 {
     if (responseSize > (index + 1U))
     {
@@ -836,7 +836,7 @@ bool T3BTuner::ResponseUint16(uint8_t const index, uint16_t* const resp)
     return false;
 }
 
-bool T3BTuner::ResponseUint32(uint8_t const index, uint32_t* const resp)
+bool T3BTuner::responseUint32(uint8_t const index, uint32_t* const resp)
 {
     if (responseSize > (index + 3U))
     {
@@ -852,7 +852,7 @@ bool T3BTuner::ResponseUint32(uint8_t const index, uint32_t* const resp)
 /*
  * Convert uint16_t (2 * uint8_t) from Tuner to a char.
  */
-char T3BTuner::Uint16ToChar(uint8_t const byte1, uint8_t const byte0)
+char T3BTuner::uint16ToChar(uint8_t const byte1, uint8_t const byte0)
 {
     if (byte1 == 0x00)
     {

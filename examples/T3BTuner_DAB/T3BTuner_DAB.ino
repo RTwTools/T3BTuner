@@ -25,9 +25,9 @@ void setup()
 {
     Serial.begin(57600);
     Serial.println("DAB RESET & START");
-    tuner.Init();
+    tuner.init();
 
-    if (!tuner.Reset())
+    if (!tuner.reset())
     {
         Serial.println("DAB NOT READY");
         while (1)
@@ -37,14 +37,14 @@ void setup()
 
     Serial.println("DAB READY");
     Serial.print("Search for DAB programs:");
-    tuner.DabSearch();
+    tuner.dabSearch();
 
     TunerState status;
     TunerState lastStatus;
 
     while (true)
     {
-        tuner.State(&status);
+        tuner.state(&status);
         if (status != lastStatus)
         {
             Serial.println();
@@ -80,11 +80,11 @@ void setup()
     }
     Serial.println("");
 
-    tuner.DabStationCount(&stationCount);
+    tuner.dabStationCount(&stationCount);
     Serial.println("Available programs: ");
     for (uint32_t i = 0; i <= stationCount; i++)
     {
-        if (tuner.DabStationName(i, buffer, sizeof(buffer)))
+        if (tuner.dabStationName(i, buffer, sizeof(buffer)))
         {
             Serial.print(i);
             Serial.print("\t ");
@@ -93,19 +93,19 @@ void setup()
     }
     Serial.println();
 
-    if (tuner.AudioOutput())
+    if (tuner.audioOutput())
     {
         Serial.println("Set audio output");
     }
 
-    if (tuner.VolumeSet(8))
+    if (tuner.volumeSet(8))
     {
         Serial.println("Set volume");
     }
 
     stationId = 0;
 
-    if (tuner.EventEnable(true))
+    if (tuner.eventEnable(true))
     {
         Serial.println("Event notification enabled");
     }
@@ -117,9 +117,9 @@ void loop()
     {
         stationId = (stationId < stationCount) ? stationId + 1 : 0;
 
-        if (tuner.PlayDab(stationId))
+        if (tuner.playDab(stationId))
         {
-            if (tuner.DabStationName(stationId, buffer, sizeof(buffer)))
+            if (tuner.dabStationName(stationId, buffer, sizeof(buffer)))
             {
                 Serial.print("Tuned program: (");
                 Serial.print(stationId);
@@ -129,10 +129,10 @@ void loop()
         }
     }
 
-    if (tuner.EventReceived())
+    if (tuner.eventReceived())
     {
         EventType eventType;
-        if (tuner.EventRead(&eventType))
+        if (tuner.eventRead(&eventType))
         {
             if (eventType == EventType::FinishedScan)
             {
@@ -140,7 +140,7 @@ void loop()
             }
             else if (eventType == EventType::DabStationText)
             {
-                if (tuner.DabStationText(buffer, sizeof(buffer)))
+                if (tuner.dabStationText(buffer, sizeof(buffer)))
                 {
                     Serial.print("DAB text event: ");
                     Serial.println(buffer);

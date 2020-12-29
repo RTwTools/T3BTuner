@@ -5,18 +5,18 @@
 
 enum class GpioMode : uint8_t
 {
-  Input,
-  Output
+    Input,
+    Output
 };
 
 enum class GpioState : uint8_t
 {
-  Low,
-  High
+    Low,
+    High
 };
 
-void GpioModeSet(uint8_t const pin, GpioMode const mode);
-GpioState GpioRead(uint8_t const pin);
-void GpioWrite(uint8_t const pin, GpioState const value);
+void gpioModeSet(uint8_t const pin, GpioMode const mode);
+GpioState gpioRead(uint8_t const pin);
+void gpioWrite(uint8_t const pin, GpioState const value);
 
 #endif // Gpio_h

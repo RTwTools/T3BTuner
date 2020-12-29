@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-static const uint8_t CommandMaxSize = 20U;
-static const uint8_t CommandStartValue = 0xFE;
-static const uint8_t CommandEndValue = 0xFD;
+static uint8_t const CommandMaxSize = 20U;
+static uint8_t const CommandStartValue = 0xFE;
+static uint8_t const CommandEndValue = 0xFD;
 
 struct Command
 {

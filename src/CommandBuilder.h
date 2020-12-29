@@ -85,19 +85,19 @@ enum class CmdNotificationId : uint8_t
 class CommandBuilder
 {
   public:
-    CommandBuilder& CreateSystem(CmdSystemId const id);
-    CommandBuilder& CreateStream(CmdStreamId const id);
-    CommandBuilder& CreateRtc(CmdRtcId const id);
-    CommandBuilder& CreateNotification(CmdNotificationId const id);
+    CommandBuilder& createSystem(CmdSystemId const id);
+    CommandBuilder& createStream(CmdStreamId const id);
+    CommandBuilder& createRtc(CmdRtcId const id);
+    CommandBuilder& createNotification(CmdNotificationId const id);
 
-    CommandBuilder& Append(uint8_t const value);
-    CommandBuilder& Append(uint16_t const value);
-    CommandBuilder& Append(uint32_t const value);
+    CommandBuilder& append(uint8_t const value);
+    CommandBuilder& append(uint16_t const value);
+    CommandBuilder& append(uint32_t const value);
 
-    Command& Build();
+    Command& build();
 
   private:
-    CommandBuilder& Create(CommandType const type, uint8_t const id);
+    CommandBuilder& create(CommandType const type, uint8_t const id);
     Command command;
 };
 
