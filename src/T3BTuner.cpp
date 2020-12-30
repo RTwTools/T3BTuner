@@ -9,14 +9,14 @@ static const uint8_t ResponseAck = 0x00;
 static const uint8_t ResponseAckNack = 0x02;
 static const uint8_t UnusedPin = 255;
 
-T3BTuner::T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin) :
-    T3BTuner(serial, resetPin, mutePin, UnusedPin)
+T3BTuner::T3BTuner(ISerialStream& stream, uint8_t const resetPin, uint8_t const mutePin) :
+    T3BTuner(stream, resetPin, mutePin, UnusedPin)
 {
 }
 
-T3BTuner::T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin,
+T3BTuner::T3BTuner(ISerialStream& stream, uint8_t const resetPin, uint8_t const mutePin,
                    uint8_t const spiCsPin) :
-    serial(serial),
+    stream(stream),
     pinReset(resetPin),
     pinMute(mutePin),
     pinSpiCs(spiCsPin)
@@ -37,8 +37,8 @@ void T3BTuner::init()
         gpioWrite(pinSpiCs, GpioState::Low);
     }
 
-    serial->begin(TunerSerialBaudrate);
-    serial->setTimeout(50U);
+    stream.begin(TunerSerialBaudrate);
+    stream.setTimeout(50U);
 
     gpioModeSet(pinReset, GpioMode::Output);
     gpioWrite(pinReset, GpioState::Low);
@@ -726,7 +726,7 @@ bool T3BTuner::eventEnable(bool const enable)
 
 bool T3BTuner::eventReceived()
 {
-    return (bool)serial->available();
+    return (bool)stream.available();
 }
 
 /*
@@ -748,12 +748,12 @@ bool T3BTuner::eventRead(EventType* const type)
  */
 bool T3BTuner::commandSend(Command const& command)
 {
-    while (serial->available())
+    while (stream.available())
     {
-        serial->read();
+        stream.read();
     }
-    serial->write(command.data, command.size);
-    serial->flush();
+    stream.write(command.data, command.size);
+    stream.flush();
     return (responseReceive() &&
             !(responseHeader[1U] == ResponseAck && responseHeader[2U] == ResponseAckNack));
 }
@@ -767,9 +767,9 @@ bool T3BTuner::responseReceive()
 
     while (systemMillis() < endMillis && index < T3BTunerMaxDataSize)
     {
-        if (serial->available())
+        if (stream.available())
         {
-            data = serial->read();
+            data = stream.read();
             if (data == CommandStartValue)
             {
                 index = 0U;
@@ -811,6 +811,7 @@ bool T3BTuner::responseText(char* const buffer, uint16_t const size)
         if (size <= j)
             return false;
         buffer[j++] = uint16ToChar(response[i], response[i + 1U]);
+        discardTrailingSpaces(buffer);
     }
     return true;
 }
@@ -1011,4 +1012,16 @@ char T3BTuner::uint16ToChar(uint8_t const byte1, uint8_t const byte0)
     }
 
     return 0x00;
+}
+
+void T3BTuner::discardTrailingSpaces(char* const text)
+{
+    int16_t index = strlen(text) - 1;
+
+    while (index >= 0U && text[index] == ' ')
+    {
+        index--;
+    }
+
+    text[++index] = '\0';
 }

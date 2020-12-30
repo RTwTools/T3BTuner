@@ -161,9 +161,8 @@ enum class EventType : uint8_t
 class T3BTuner
 {
   public:
-    T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin);
-    T3BTuner(ISerialStream* const serial, uint8_t const resetPin, uint8_t const mutePin,
-             uint8_t const spiCsPin);
+    T3BTuner(ISerialStream& stream, uint8_t const resetPin, uint8_t const mutePin);
+    T3BTuner(ISerialStream& stream, uint8_t const resetPin, uint8_t const mutePin, uint8_t const spiCsPin);
     void init();
 
     // *************************
@@ -255,6 +254,7 @@ class T3BTuner
     bool responseUint16(uint8_t const index, uint16_t* const resp);
     bool responseUint32(uint8_t const index, uint32_t* const resp);
     char uint16ToChar(uint8_t const byte0, uint8_t const byte1);
+    void discardTrailingSpaces(char* const text);
 
     CommandBuilder commandBuilder;
     uint8_t response[T3BTunerMaxDataSize];
@@ -262,10 +262,10 @@ class T3BTuner
     uint16_t responseSize = 0U;
     char stationText[T3BTunerMaxTextSize];
 
-    ISerialStream* serial;
-    uint8_t pinReset;
-    uint8_t pinMute;
-    uint8_t pinSpiCs;
+    ISerialStream& stream;
+    uint8_t const pinReset;
+    uint8_t const pinMute;
+    uint8_t const pinSpiCs;
 };
 
 #endif // T3BTuner_h

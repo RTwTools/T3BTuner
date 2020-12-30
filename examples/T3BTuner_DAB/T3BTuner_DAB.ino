@@ -9,14 +9,14 @@
 #include "T3BTuner.h"
 #include <SoftwareSerial.h>
 
-#define SERIAL_TX 8
-#define SERIAL_RX 9
-#define PIN_RESET 3
-#define PIN_MUTE 2
+static uint8_t const PinMute = 2U;
+static uint8_t const PinReset = 3U;
+static uint8_t const PinTunerTx = 8U;
+static uint8_t const PinTunerRx = 9U;
 
-SoftwareSerial* serial = new SoftwareSerial(SERIAL_RX, SERIAL_TX);
-ISerialStream* stream = new SerialStream(serial);
-T3BTuner tuner = T3BTuner(stream, PIN_RESET, PIN_MUTE);
+auto tunerSerial = new SoftwareSerial(PinTunerRx, PinTunerTx);
+auto tunerStream = new SerialStream(tunerSerial);
+T3BTuner tuner(*tunerStream, PinReset, PinMute);
 char buffer[T3BTunerMaxTextSize];
 uint32_t stationCount = 0;
 uint32_t stationId = 0;
