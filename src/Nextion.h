@@ -16,10 +16,10 @@ class Nextion
     T3BTuner& tuner;
     char* command;
     uint8_t index;
-
     char buffer[T3BTunerMaxTextSize];
     uint32_t dabStationId;
     uint32_t dabStationsCount;
+    bool isInitialized;
 
     bool receive();
     void executeCommand();

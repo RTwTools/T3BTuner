@@ -11,6 +11,9 @@ static char const* AssignmentEnd = "\"\xFF\xFF\xFF";
 
 static char const* next = "next";
 static char const* prev = "prev";
+static char const* mute = "mute";
+static char const* volume = "vol";
+static char const* memory = "mem";
 
 static char const StartCommand = '$';
 static char const EndCommand = ';';
@@ -22,7 +25,10 @@ Nextion::Nextion(ISerialStream& stream, T3BTuner& tuner) :
     stream{stream},
     tuner{tuner},
     command{new char[MaxCommandSize]},
-    index{0}
+    index{0},
+    dabStationId{0U},
+    dabStationsCount{0U},
+    isInitialized{false}
 {
     memset(command, 0U, MaxCommandSize);
 }
@@ -34,6 +40,14 @@ Nextion::~Nextion()
 
 void Nextion::execute()
 {
+    if (false == isInitialized)
+    {
+        tuner.dabStationCount(&dabStationsCount);
+        tuner.nowPlaying(&dabStationId);
+        printDabStationName();
+        isInitialized = true;
+    }
+
     if (true == receive())
     {
         executeCommand();
@@ -81,17 +95,34 @@ void Nextion::executeCommand()
 {
     if (strncmp(command, next, strlen(next)) == Match)
     {
-        tuner.dabStationCount(&dabStationsCount);
         dabStationId = ((dabStationId + 1) == dabStationsCount) ? 0U : dabStationId + 1U;
         tuner.playDab(dabStationId);
         printDabStationName();
     }
     else if (strncmp(command, prev, strlen(prev)) == Match)
     {
-        tuner.dabStationCount(&dabStationsCount);
         dabStationId = (dabStationId == 0U) ? dabStationsCount - 1U : dabStationId - 1U;
         tuner.playDab(dabStationId);
         printDabStationName();
+    }
+    else if (strncmp(command, mute, strlen(mute)) == Match)
+    {
+        bool const value = (command[4] == 0x01);
+        tuner.audioOutput(value, value);
+    }
+    else if (strncmp(command, volume, strlen(volume)) == Match)
+    {
+        uint8_t const value = static_cast<uint8_t>(command[3]);
+        tuner.volumeSet(value);
+    }
+    else if (strncmp(command, memory, strlen(memory)) == Match)
+    {
+        MemoryId const memoryId = static_cast<MemoryId>(command[3]);
+        uint32_t stationId = 0x00;
+        if (tuner.memoryGet(MemoryType::Dab, memoryId, &stationId))
+        {
+            tuner.playDab(stationId);
+        }
     }
     else
     {
@@ -104,7 +135,7 @@ void Nextion::printDabStationName()
     if (tuner.dabStationName(dabStationId, buffer, sizeof(buffer)))
     {
         setLabel(LabelStation, buffer);
-    }    
+    }
 }
 
 void Nextion::setLabel(char const* label, char const* text)
